@@ -18,8 +18,7 @@ body,
 body {
   background:
     radial-gradient(circle at 10% -10%, #1f2b45 0%, transparent 40%),
-    radial-gradient(circle at 100% 0%, #1b2f3a 0%, transparent 38%),
-    #0b111b;
+    radial-gradient(circle at 100% 0%, #1b2f3a 0%, transparent 38%), #0b111b;
 }
 
 .demo-page {
@@ -117,6 +116,11 @@ body {
   color: #eff6ff;
 }
 
+.play-btn {
+  width: 84px;
+  text-align: center;
+}
+
 .ghost-btn {
   background: #162235;
   color: #dbeafe;
@@ -129,6 +133,11 @@ body {
   flex-wrap: wrap;
   color: #cbd5e1;
   font-size: 13px;
+}
+
+.meta-item {
+  min-width: 80px;
+  font-variant-numeric: tabular-nums;
 }
 
 .control-group {

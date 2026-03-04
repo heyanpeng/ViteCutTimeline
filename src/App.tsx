@@ -152,7 +152,7 @@ export default function App() {
     "stop",
   );
   const [dragSnapToClipEdges, setDragSnapToClipEdges] = useState(true);
-  const [trimSnapToTimelineTicks, setTrimSnapToTimelineTicks] = useState(true);
+  const [trimSnapToTimelineTicks, setTrimSnapToTimelineTicks] = useState(false);
   const [trimSnapToClipEdges, setTrimSnapToClipEdges] = useState(true);
 
   const currentTime = useMemo(() => (frame / FPS).toFixed(2), [frame]);
@@ -197,7 +197,7 @@ export default function App() {
         <div className="panel-row">
           <button
             type="button"
-            className="primary-btn"
+            className="primary-btn play-btn"
             onClick={() => setPlaying((v) => !v)}
           >
             {playing ? "Pause" : "Play"}
@@ -210,9 +210,9 @@ export default function App() {
             Jump To Start
           </button>
           <div className="meta-group">
-            <span>Frame {frame}</span>
-            <span>Time {currentTime}s</span>
-            <span>Progress {frameProgress}%</span>
+            <span className="meta-item">Frame {frame}</span>
+            <span className="meta-item">Time {currentTime}s</span>
+            <span className="meta-item">Progress {frameProgress}%</span>
           </div>
         </div>
 

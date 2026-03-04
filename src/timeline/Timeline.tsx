@@ -66,6 +66,10 @@ export const Timeline: React.FC<TimelineProps> = ({
   onRulerDoubleClick,
   onBlankAreaDoubleClick,
 }) => {
+  const isSourceBoundClip = useCallback((clip: Clip) => {
+    return clip.kind === "video" || clip.kind === "audio";
+  }, []);
+
   const rootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rulerCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -610,8 +614,11 @@ export const Timeline: React.FC<TimelineProps> = ({
         if (clipEnd <= fixedEnd && clipEnd > maxEnd) return clipEnd;
         return maxEnd;
       }, 0);
+      const sourceBoundMinDelta = isSourceBoundClip(trim.origin)
+        ? -trim.origin.displayStart
+        : Number.NEGATIVE_INFINITY;
       const minDelta = Math.max(
-        -trim.origin.displayStart,
+        sourceBoundMinDelta,
         -trim.origin.startFrame,
         leftBoundary - trim.origin.startFrame,
       );
