@@ -59,6 +59,8 @@ export const Timeline: React.FC<TimelineProps> = ({
   maxZoom = 8,
   zoom: controlledZoom,
   rowHeight = 52,
+  trackGap = 0,
+  trackHeightPresets,
   onTracksChange,
   onFrameChange,
   onPlayingChange,
@@ -90,6 +92,20 @@ export const Timeline: React.FC<TimelineProps> = ({
   const [selection, setSelection] = useState<Selection>(null);
 
   const zoom = clamp(controlledZoom ?? uncontrolledZoom, minZoom, maxZoom);
+  const getDefaultTrackHeight = useCallback(
+    (role?: Track["role"], kind?: Clip["kind"]) => {
+      if (role === "main") return trackHeightPresets?.main ?? rowHeight;
+      if (role === "audio") return trackHeightPresets?.audio ?? rowHeight;
+      if (kind === "video") return trackHeightPresets?.video ?? rowHeight;
+      if (kind === "audio") return trackHeightPresets?.audio ?? rowHeight;
+      if (kind === "image") return trackHeightPresets?.image ?? rowHeight;
+      if (kind === "text") return trackHeightPresets?.text ?? rowHeight;
+      if (kind === "solid") return trackHeightPresets?.solid ?? rowHeight;
+      return trackHeightPresets?.normal ?? rowHeight;
+    },
+    [rowHeight, trackHeightPresets],
+  );
+
   const totalContentWidth = frameToPixel(totalFrames, zoom);
   const lastClipEndFrame = useMemo(() => {
     let maxEnd = 0;
@@ -103,16 +119,26 @@ export const Timeline: React.FC<TimelineProps> = ({
   const trackLayouts = useMemo<TrackLayout[]>(() => {
     let y = RULER_HEIGHT;
     return tracks.map((track, index) => {
-      const height = Math.max(MIN_TRACK_HEIGHT, track.height ?? rowHeight);
+      const kind = track.clips[0]?.kind;
+      const defaultHeight = getDefaultTrackHeight(track.role, kind);
+      const height = Math.max(MIN_TRACK_HEIGHT, track.height ?? defaultHeight);
       const layout: TrackLayout = { id: track.id, index, top: y, height, bottom: y + height };
-      y += height;
+      y += height + trackGap;
       return layout;
     });
-  }, [tracks, rowHeight]);
+  }, [getDefaultTrackHeight, trackGap, tracks]);
 
   const trackLayoutMap = useMemo(
     () => new Map(trackLayouts.map((layout) => [layout.id, layout])),
     [trackLayouts],
+  );
+  const trackIndexMap = useMemo(
+    () => new Map(tracks.map((track, index) => [track.id, index])),
+    [tracks],
+  );
+  const mainTrackIndex = useMemo(
+    () => tracks.findIndex((track) => track.role === "main"),
+    [tracks],
   );
 
   const totalHeight = trackLayouts.length > 0 ? trackLayouts[trackLayouts.length - 1].bottom : RULER_HEIGHT;
@@ -328,7 +354,20 @@ export const Timeline: React.FC<TimelineProps> = ({
       if (contentY <= first.top) return first.id;
       if (contentY >= last.bottom) return last.id;
       const hit = trackLayouts.find((layout) => contentY >= layout.top && contentY < layout.bottom);
-      return hit?.id ?? last.id;
+      if (hit) return hit.id;
+      const nearest = trackLayouts.reduce<{ id: string; distance: number } | null>((best, layout) => {
+        const distance =
+          contentY < layout.top
+            ? layout.top - contentY
+            : contentY > layout.bottom
+              ? contentY - layout.bottom
+              : 0;
+        if (!best || distance < best.distance) {
+          return { id: layout.id, distance };
+        }
+        return best;
+      }, null);
+      return nearest?.id ?? last.id;
     },
     [trackLayouts, tracks.length],
   );
@@ -342,15 +381,22 @@ export const Timeline: React.FC<TimelineProps> = ({
   }, [tracks]);
 
   const createTrackFromId = useCallback(
-    (id: string): Track => {
+    (id: string, clipKind?: Clip["kind"]): Track => {
       const match = id.match(/(\d+)$/);
       const index = match ? Number(match[1]) : tracks.length + 1;
-      return { id, name: `Track ${index}`, height: rowHeight, clips: [] };
+      const role = clipKind === "audio" ? "audio" : "normal";
+      return {
+        id,
+        name: `Track ${index}`,
+        role,
+        height: getDefaultTrackHeight(role, clipKind),
+        clips: [],
+      };
     },
-    [rowHeight, tracks.length],
+    [getDefaultTrackHeight, tracks.length],
   );
 
-  const createNextTrack = useCallback((): Track => {
+  const createNextTrack = useCallback((clipKind?: Clip["kind"]): Track => {
     const existingIds = new Set(tracks.map((track) => track.id));
     let index = tracks.length + 1;
     let id = `track-${index}`;
@@ -358,13 +404,50 @@ export const Timeline: React.FC<TimelineProps> = ({
       index += 1;
       id = `track-${index}`;
     }
-    return { id, name: `Track ${index}`, height: rowHeight, clips: [] };
-  }, [rowHeight, tracks]);
+    const role = clipKind === "audio" ? "audio" : "normal";
+    return {
+      id,
+      name: `Track ${index}`,
+      role,
+      height: getDefaultTrackHeight(role, clipKind),
+      clips: [],
+    };
+  }, [getDefaultTrackHeight, tracks]);
+
+  const canPlaceClipOnTrack = useCallback(
+    (clip: Clip, targetTrackId: string) => {
+      const targetTrackIndex = trackIndexMap.get(targetTrackId);
+      if (targetTrackIndex == null) return false;
+      const targetTrack = tracks[targetTrackIndex];
+      if (!targetTrack) return false;
+      const movingKind = clip.kind ?? "video";
+      const fixedKinds = new Set(
+        targetTrack.clips
+          .filter((item) => item.id !== clip.id)
+          .map((item) => item.kind ?? "video"),
+      );
+      if (fixedKinds.size > 0 && !fixedKinds.has(movingKind)) return false;
+
+      if (targetTrack.role === "main" && movingKind !== "video") return false;
+      if (targetTrack.role === "audio" && movingKind !== "audio") return false;
+      if (movingKind === "audio" && targetTrack.role !== "audio") return false;
+      if (movingKind !== "audio" && mainTrackIndex >= 0 && targetTrackIndex > mainTrackIndex) {
+        return false;
+      }
+
+      if (movingKind === "audio" && mainTrackIndex >= 0 && targetTrackIndex <= mainTrackIndex) {
+        return false;
+      }
+      return true;
+    },
+    [mainTrackIndex, trackIndexMap, tracks],
+  );
 
   const maybeAppendTrackForDrag = useCallback(
-    (clientY: number) => {
+    (clientY: number, clip: Clip) => {
       const scrollEl = scrollRef.current;
       if (!scrollEl || !onTracksChange) return null;
+      if ((clip.kind ?? "video") !== "audio") return null;
       const rect = scrollEl.getBoundingClientRect();
       const contentY = clientY - rect.top + scrollEl.scrollTop;
       const lastTrackBottom = trackLayouts.length > 0 ? trackLayouts[trackLayouts.length - 1].bottom : RULER_HEIGHT;
@@ -374,7 +457,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         return pendingCreateTrackIdRef.current;
       }
 
-      const newTrack = createNextTrack();
+      const newTrack = createNextTrack(clip.kind);
       pendingCreateTrackIdRef.current = newTrack.id;
       onTracksChange([...tracks, newTrack]);
       return newTrack.id;
@@ -531,15 +614,18 @@ export const Timeline: React.FC<TimelineProps> = ({
     const deltaFrame = Math.round(pixelToFrame(dx, zoom));
     const proposed = clamp(drag.originFrame + deltaFrame, 0, totalFrames - drag.clip.duration);
     const snapped = snapFrame(drag.clipId, proposed, drag.clip.duration);
-    const newTrackId = maybeAppendTrackForDrag(event.clientY);
+    const newTrackId = maybeAppendTrackForDrag(event.clientY, drag.clip);
     const targetTrackId = newTrackId ?? getTrackIdByClientY(event.clientY) ?? drag.previewTrackId;
-    const resolvedStart = resolveStartInTrack(targetTrackId, drag.clipId, drag.clip.duration, snapped.startFrame);
+    const canPlace = canPlaceClipOnTrack(drag.clip, targetTrackId);
+    const resolvedStart = canPlace
+      ? resolveStartInTrack(targetTrackId, drag.clipId, drag.clip.duration, snapped.startFrame)
+      : null;
     setDrag((prev) =>
       prev
         ? {
             ...prev,
-            previewTrackId: targetTrackId,
-            previewStartFrame: resolvedStart ?? snapped.startFrame,
+            previewTrackId: resolvedStart != null ? targetTrackId : prev.previewTrackId,
+            previewStartFrame: resolvedStart ?? prev.previewStartFrame,
             snappedFrame: resolvedStart != null && resolvedStart === snapped.startFrame ? snapped.snappedFrame : null,
             isDropValid: resolvedStart != null,
           }
@@ -560,7 +646,9 @@ export const Timeline: React.FC<TimelineProps> = ({
 
     const movedClip: Clip = { ...drag.clip, startFrame: drag.previewStartFrame };
     const hasPreviewTrack = tracks.some((track) => track.id === drag.previewTrackId);
-    const workingTracks = hasPreviewTrack ? tracks : [...tracks, createTrackFromId(drag.previewTrackId)];
+    const workingTracks = hasPreviewTrack
+      ? tracks
+      : [...tracks, createTrackFromId(drag.previewTrackId, drag.clip.kind)];
     const next = workingTracks.map((track) => {
       if (track.id === drag.originTrackId && drag.originTrackId === drag.previewTrackId) {
         return {
@@ -843,8 +931,8 @@ export const Timeline: React.FC<TimelineProps> = ({
                 const width = Math.max(2, frameToPixel(renderClip.duration, zoom));
                 const layout = trackLayoutMap.get(track.id);
                 if (!layout) return null;
-                const top = layout.top + 6;
-                const clipHeight = Math.max(14, layout.height - 12);
+                const top = layout.top;
+                const clipHeight = Math.max(14, layout.height);
 
                 return (
                   <ClipItem
@@ -877,9 +965,9 @@ export const Timeline: React.FC<TimelineProps> = ({
             <DragPreview
               clip={drag.clip}
               left={frameToPixel(drag.previewStartFrame, zoom)}
-              top={(trackLayoutMap.get(drag.previewTrackId)?.top ?? RULER_HEIGHT) + 6}
+              top={trackLayoutMap.get(drag.previewTrackId)?.top ?? RULER_HEIGHT}
               width={Math.max(2, frameToPixel(drag.clip.duration, zoom))}
-              height={Math.max(14, (trackLayoutMap.get(drag.previewTrackId)?.height ?? rowHeight) - 12)}
+              height={Math.max(14, trackLayoutMap.get(drag.previewTrackId)?.height ?? rowHeight)}
               isDropValid={drag.isDropValid}
               onPointerMove={onClipPointerMove}
               onPointerUp={onClipPointerUp}

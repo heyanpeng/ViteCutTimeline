@@ -8,46 +8,22 @@ const TOTAL_FRAMES = 30 * 120;
 const GITHUB_URL = "https://github.com/heyanpeng/ViteCutTimeline";
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 8;
+const TRACK_GAP = 6;
+const TRACK_HEIGHT_PRESETS = {
+  main: 60,
+  video: 50,
+  audio: 50,
+  image: 40,
+  text: 40,
+  solid: 40,
+};
 
 const createDemoTracks = (): Track[] => [
   {
-    id: "video-main",
-    name: "Video Main",
-    height: 56,
-    clips: [
-      {
-        id: "v1",
-        startFrame: 0,
-        displayStart: 0,
-        duration: 220,
-        layer: 0,
-        kind: "video",
-        title: "Main Video",
-      },
-      {
-        id: "v2",
-        startFrame: 250,
-        displayStart: 35,
-        duration: 260,
-        layer: 0,
-        kind: "video",
-        title: "A-Roll 02",
-      },
-      {
-        id: "v3",
-        startFrame: 560,
-        displayStart: 12,
-        duration: 210,
-        layer: 0,
-        kind: "video",
-        title: "A-Roll 03",
-      },
-    ],
-  },
-  {
-    id: "overlay",
-    name: "Overlay",
-    height: 50,
+    id: "overlay-text",
+    name: "Text",
+    role: "normal",
+    height: 40,
     clips: [
       {
         id: "o1",
@@ -60,6 +36,14 @@ const createDemoTracks = (): Track[] => [
         icon: "𝑇",
         color: "#6f58d9",
       },
+    ],
+  },
+  {
+    id: "overlay-solid",
+    name: "Solid",
+    role: "normal",
+    height: 40,
+    clips: [
       {
         id: "o2",
         startFrame: 220,
@@ -71,6 +55,14 @@ const createDemoTracks = (): Track[] => [
         icon: "●",
         color: "#a64ac9",
       },
+    ],
+  },
+  {
+    id: "overlay-image",
+    name: "Image",
+    role: "normal",
+    height: 40,
+    clips: [
       {
         id: "o3",
         startFrame: 380,
@@ -87,7 +79,8 @@ const createDemoTracks = (): Track[] => [
   {
     id: "broll",
     name: "B-roll",
-    height: 62,
+    role: "normal",
+    height: 50,
     clips: [
       {
         id: "b1",
@@ -119,9 +112,45 @@ const createDemoTracks = (): Track[] => [
     ],
   },
   {
+    id: "video-main",
+    name: "Video Main",
+    role: "main",
+    height: 60,
+    clips: [
+      {
+        id: "v1",
+        startFrame: 0,
+        displayStart: 0,
+        duration: 220,
+        layer: 0,
+        kind: "video",
+        title: "Main Video",
+      },
+      {
+        id: "v2",
+        startFrame: 250,
+        displayStart: 35,
+        duration: 260,
+        layer: 0,
+        kind: "video",
+        title: "A-Roll 02",
+      },
+      {
+        id: "v3",
+        startFrame: 560,
+        displayStart: 12,
+        duration: 210,
+        layer: 0,
+        kind: "video",
+        title: "A-Roll 03",
+      },
+    ],
+  },
+  {
     id: "audio",
     name: "Audio",
-    height: 42,
+    role: "audio",
+    height: 50,
     clips: [
       {
         id: "a1",
@@ -334,6 +363,8 @@ export default function App() {
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
           zoom={zoom}
+          trackGap={TRACK_GAP}
+          trackHeightPresets={TRACK_HEIGHT_PRESETS}
           onTracksChange={setTracks}
           onFrameChange={setFrame}
           onPlayingChange={setPlaying}

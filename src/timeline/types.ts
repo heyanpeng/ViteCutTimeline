@@ -18,9 +18,20 @@ export interface Clip {
 export interface Track {
   id: string;
   name?: string;
+  role?: "main" | "audio" | "normal";
   height?: number;
   clips: Clip[];
 }
+
+export type TrackHeightPresets = {
+  main?: number;
+  normal?: number;
+  video?: number;
+  audio?: number;
+  image?: number;
+  text?: number;
+  solid?: number;
+};
 
 export type TimelineProps = {
   tracks: Track[];
@@ -41,6 +52,8 @@ export type TimelineProps = {
   maxZoom?: number;
   zoom?: number;
   rowHeight?: number;
+  trackGap?: number;
+  trackHeightPresets?: TrackHeightPresets;
   onTracksChange?: (next: Track[]) => void;
   onFrameChange?: (frame: number) => void;
   onPlayingChange?: (playing: boolean) => void;
