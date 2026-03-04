@@ -6,7 +6,7 @@ import "./App.css";
 
 const DURATION = 120;
 const GITHUB_URL = "https://github.com/heyanpeng/ViteCutTimeline";
-const MIN_ZOOM = 0.25;
+const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 8;
 const TRACK_GAP = 6;
 const TRACK_HEIGHT_PRESETS = {
@@ -27,9 +27,36 @@ const createDemoRows = (): TimelineRow[] => [
     role: "normal",
     height: 40,
     actions: [
-      a({ id: "txt-1", effectId: "text", start: 0.4, end: 3.8, kind: "text", title: "Open Title", icon: "𝑇", color: "#6f58d9" }),
-      a({ id: "txt-2", effectId: "text", start: 8.5, end: 12.4, kind: "text", title: "Subtitle", icon: "𝑇", color: "#5b4bc2" }),
-      a({ id: "txt-3", effectId: "text", start: 82.3, end: 91.8, kind: "text", title: "Ending Credits", icon: "𝑇", color: "#4f46b8" }),
+      a({
+        id: "txt-1",
+        effectId: "text",
+        start: 0.4,
+        end: 3.8,
+        kind: "text",
+        title: "Open Title",
+        icon: "𝑇",
+        color: "#6f58d9",
+      }),
+      a({
+        id: "txt-2",
+        effectId: "text",
+        start: 8.5,
+        end: 12.4,
+        kind: "text",
+        title: "Subtitle",
+        icon: "𝑇",
+        color: "#5b4bc2",
+      }),
+      a({
+        id: "txt-3",
+        effectId: "text",
+        start: 82.3,
+        end: 91.8,
+        kind: "text",
+        title: "Ending Credits",
+        icon: "𝑇",
+        color: "#4f46b8",
+      }),
     ],
   },
   {
@@ -38,9 +65,36 @@ const createDemoRows = (): TimelineRow[] => [
     role: "normal",
     height: 40,
     actions: [
-      a({ id: "solid-1", effectId: "solid", start: 2.2, end: 5.2, kind: "solid", title: "Flash", icon: "●", color: "#a64ac9" }),
-      a({ id: "solid-2", effectId: "solid", start: 38.4, end: 44.1, kind: "solid", title: "Mask BG", icon: "●", color: "#9b3fbf" }),
-      a({ id: "solid-3", effectId: "solid", start: 92.6, end: 103.2, kind: "solid", title: "Color Block", icon: "●", color: "#8f34b4" }),
+      a({
+        id: "solid-1",
+        effectId: "solid",
+        start: 2.2,
+        end: 5.2,
+        kind: "solid",
+        title: "Flash",
+        icon: "●",
+        color: "#a64ac9",
+      }),
+      a({
+        id: "solid-2",
+        effectId: "solid",
+        start: 38.4,
+        end: 44.1,
+        kind: "solid",
+        title: "Mask BG",
+        icon: "●",
+        color: "#9b3fbf",
+      }),
+      a({
+        id: "solid-3",
+        effectId: "solid",
+        start: 92.6,
+        end: 103.2,
+        kind: "solid",
+        title: "Color Block",
+        icon: "●",
+        color: "#8f34b4",
+      }),
     ],
   },
   {
@@ -49,9 +103,36 @@ const createDemoRows = (): TimelineRow[] => [
     role: "normal",
     height: 40,
     actions: [
-      a({ id: "img-1", effectId: "image", start: 12.5, end: 17.2, kind: "image", title: "Hero Image", icon: "🖼", color: "#3a7d44" }),
-      a({ id: "img-2", effectId: "image", start: 54.2, end: 61.4, kind: "image", title: "Diagram", icon: "🖼", color: "#2f6f39" }),
-      a({ id: "img-3", effectId: "image", start: 100.8, end: 108.7, kind: "image", title: "Outro Card", icon: "🖼", color: "#2a6333" }),
+      a({
+        id: "img-1",
+        effectId: "image",
+        start: 12.5,
+        end: 17.2,
+        kind: "image",
+        title: "Hero Image",
+        icon: "🖼",
+        color: "#3a7d44",
+      }),
+      a({
+        id: "img-2",
+        effectId: "image",
+        start: 54.2,
+        end: 61.4,
+        kind: "image",
+        title: "Diagram",
+        icon: "🖼",
+        color: "#2f6f39",
+      }),
+      a({
+        id: "img-3",
+        effectId: "image",
+        start: 100.8,
+        end: 108.7,
+        kind: "image",
+        title: "Outro Card",
+        icon: "🖼",
+        color: "#2a6333",
+      }),
     ],
   },
   {
@@ -60,9 +141,36 @@ const createDemoRows = (): TimelineRow[] => [
     role: "normal",
     height: 50,
     actions: [
-      a({ id: "vu-a-1", effectId: "video", start: 1.1, end: 4.2, inPoint: 0, outPoint: 3.1, kind: "video", title: "B-roll 01" }),
-      a({ id: "vu-a-2", effectId: "video", start: 17.3, end: 25.2, inPoint: 1.6, outPoint: 9.5, kind: "video", title: "B-roll 02" }),
-      a({ id: "vu-a-3", effectId: "video", start: 32.5, end: 41.2, inPoint: 0.7, outPoint: 9.4, kind: "video", title: "B-roll 03" }),
+      a({
+        id: "vu-a-1",
+        effectId: "video",
+        start: 1.1,
+        end: 4.2,
+        inPoint: 0,
+        outPoint: 3.1,
+        kind: "video",
+        title: "B-roll 01",
+      }),
+      a({
+        id: "vu-a-2",
+        effectId: "video",
+        start: 17.3,
+        end: 25.2,
+        inPoint: 1.6,
+        outPoint: 9.5,
+        kind: "video",
+        title: "B-roll 02",
+      }),
+      a({
+        id: "vu-a-3",
+        effectId: "video",
+        start: 32.5,
+        end: 41.2,
+        inPoint: 0.7,
+        outPoint: 9.4,
+        kind: "video",
+        title: "B-roll 03",
+      }),
     ],
   },
   {
@@ -71,12 +179,66 @@ const createDemoRows = (): TimelineRow[] => [
     role: "main",
     height: 70,
     actions: [
-      a({ id: "v1", effectId: "video", start: 0, end: 10.5, inPoint: 0, outPoint: 10.5, kind: "video", title: "Main Video 01" }),
-      a({ id: "v2", effectId: "video", start: 11.4, end: 26.2, inPoint: 1.2, outPoint: 16, kind: "video", title: "Main Video 02" }),
-      a({ id: "v3", effectId: "video", start: 27.1, end: 42.4, inPoint: 0.6, outPoint: 15.9, kind: "video", title: "Main Video 03" }),
-      a({ id: "v4", effectId: "video", start: 43.5, end: 61.1, inPoint: 2.2, outPoint: 19.8, kind: "video", title: "Main Video 04" }),
-      a({ id: "v5", effectId: "video", start: 62.2, end: 82.3, inPoint: 3, outPoint: 23.1, kind: "video", title: "Main Video 05" }),
-      a({ id: "v6", effectId: "video", start: 83.1, end: 111.8, inPoint: 1.5, outPoint: 30.2, kind: "video", title: "Main Video 06" }),
+      a({
+        id: "v1",
+        effectId: "video",
+        start: 0,
+        end: 10.5,
+        inPoint: 0,
+        outPoint: 10.5,
+        kind: "video",
+        title: "Main Video 01",
+      }),
+      a({
+        id: "v2",
+        effectId: "video",
+        start: 11.4,
+        end: 26.2,
+        inPoint: 1.2,
+        outPoint: 16,
+        kind: "video",
+        title: "Main Video 02",
+      }),
+      a({
+        id: "v3",
+        effectId: "video",
+        start: 27.1,
+        end: 42.4,
+        inPoint: 0.6,
+        outPoint: 15.9,
+        kind: "video",
+        title: "Main Video 03",
+      }),
+      a({
+        id: "v4",
+        effectId: "video",
+        start: 43.5,
+        end: 61.1,
+        inPoint: 2.2,
+        outPoint: 19.8,
+        kind: "video",
+        title: "Main Video 04",
+      }),
+      a({
+        id: "v5",
+        effectId: "video",
+        start: 62.2,
+        end: 82.3,
+        inPoint: 3,
+        outPoint: 23.1,
+        kind: "video",
+        title: "Main Video 05",
+      }),
+      a({
+        id: "v6",
+        effectId: "video",
+        start: 83.1,
+        end: 111.8,
+        inPoint: 1.5,
+        outPoint: 30.2,
+        kind: "video",
+        title: "Main Video 06",
+      }),
     ],
   },
   {
@@ -85,9 +247,36 @@ const createDemoRows = (): TimelineRow[] => [
     role: "audio",
     height: 50,
     actions: [
-      a({ id: "a-vo-1", effectId: "audio", start: 0, end: 29.5, inPoint: 0, outPoint: 29.5, kind: "audio", title: "Voice Over 01" }),
-      a({ id: "a-vo-2", effectId: "audio", start: 31.1, end: 54.9, inPoint: 0.5, outPoint: 24.3, kind: "audio", title: "Voice Over 02" }),
-      a({ id: "a-vo-3", effectId: "audio", start: 58, end: 101.2, inPoint: 1.1, outPoint: 44.3, kind: "audio", title: "Voice Over 03" }),
+      a({
+        id: "a-vo-1",
+        effectId: "audio",
+        start: 0,
+        end: 29.5,
+        inPoint: 0,
+        outPoint: 29.5,
+        kind: "audio",
+        title: "Voice Over 01",
+      }),
+      a({
+        id: "a-vo-2",
+        effectId: "audio",
+        start: 31.1,
+        end: 54.9,
+        inPoint: 0.5,
+        outPoint: 24.3,
+        kind: "audio",
+        title: "Voice Over 02",
+      }),
+      a({
+        id: "a-vo-3",
+        effectId: "audio",
+        start: 58,
+        end: 101.2,
+        inPoint: 1.1,
+        outPoint: 44.3,
+        kind: "audio",
+        title: "Voice Over 03",
+      }),
     ],
   },
   {
@@ -96,20 +285,51 @@ const createDemoRows = (): TimelineRow[] => [
     role: "audio",
     height: 50,
     actions: [
-      a({ id: "a-bg-1", effectId: "audio", start: 0, end: 50.2, inPoint: 0, outPoint: 50.2, kind: "audio", title: "BGM 01" }),
-      a({ id: "a-bg-2", effectId: "audio", start: 50.6, end: 86.4, inPoint: 0.3, outPoint: 36.1, kind: "audio", title: "BGM 02" }),
-      a({ id: "a-bg-3", effectId: "audio", start: 86.8, end: 114.2, inPoint: 0.2, outPoint: 27.6, kind: "audio", title: "BGM 03" }),
+      a({
+        id: "a-bg-1",
+        effectId: "audio",
+        start: 0,
+        end: 50.2,
+        inPoint: 0,
+        outPoint: 50.2,
+        kind: "audio",
+        title: "BGM 01",
+      }),
+      a({
+        id: "a-bg-2",
+        effectId: "audio",
+        start: 50.6,
+        end: 86.4,
+        inPoint: 0.3,
+        outPoint: 36.1,
+        kind: "audio",
+        title: "BGM 02",
+      }),
+      a({
+        id: "a-bg-3",
+        effectId: "audio",
+        start: 86.8,
+        end: 114.2,
+        inPoint: 0.2,
+        outPoint: 27.6,
+        kind: "audio",
+        title: "BGM 03",
+      }),
     ],
   },
 ];
 
 export default function App() {
-  const [editorData, setEditorData] = useState<TimelineRow[]>(() => createDemoRows());
+  const [editorData, setEditorData] = useState<TimelineRow[]>(() =>
+    createDemoRows(),
+  );
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
   const [showMinorTicks, setShowMinorTicks] = useState(false);
   const [showHorizontalLines, setShowHorizontalLines] = useState(true);
-  const [playEndBehavior, setPlayEndBehavior] = useState<"stop" | "loop">("stop");
+  const [playEndBehavior, setPlayEndBehavior] = useState<"stop" | "loop">(
+    "stop",
+  );
   const [dragSnapToClipEdges, setDragSnapToClipEdges] = useState(true);
   const [trimSnapToTimelineTicks, setTrimSnapToTimelineTicks] = useState(false);
   const [trimSnapToClipEdges, setTrimSnapToClipEdges] = useState(false);
@@ -125,7 +345,10 @@ export default function App() {
   const handleSeekFromRulerDoubleClick = useCallback((nextTime: number) => {
     setTime(nextTime);
   }, []);
-  const timeProgress = useMemo(() => ((time / DURATION) * 100).toFixed(1), [time]);
+  const timeProgress = useMemo(
+    () => ((time / DURATION) * 100).toFixed(1),
+    [time],
+  );
   const zoomPercent = useMemo(() => `${Math.round(zoom * 100)}%`, [zoom]);
 
   return (
@@ -146,7 +369,8 @@ export default function App() {
           </a>
         </div>
         <p className="demo-subtitle">
-          Hybrid Canvas + DOM timeline with drag, trim, snapping and virtualization.
+          Hybrid Canvas + DOM timeline with drag, trim, snapping and
+          virtualization.
         </p>
       </header>
 

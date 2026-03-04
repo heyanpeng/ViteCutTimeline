@@ -17,18 +17,29 @@ export const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
 export const getTickStepSeconds = (pxPerSecond: number) => {
-  if (pxPerSecond >= 24) {
-    const secondSteps = [0.04, 0.1, 0.2, 0.5, 1, 2, 5];
-    const major = secondSteps.find((s) => s * pxPerSecond >= 90) ?? 5;
-    return { major, minor: Math.max(0.04, major / 5), unit: "subsecond" as const };
+  const majorStepsMs = [1000, 2000, 5000, 10000, 15000, 30000, 60000, 120000, 300000];
+  const majorMs = majorStepsMs.find((ms) => (ms / 1000) * pxPerSecond >= 90) ?? 300000;
+
+  let minorMs = Math.max(1000, Math.floor(majorMs / 5));
+  if (majorMs === 1000) {
+    if (pxPerSecond >= 360) minorMs = 40;
+    else if (pxPerSecond >= 180) minorMs = 100;
+    else if (pxPerSecond >= 90) minorMs = 200;
+    else if (pxPerSecond >= 45) minorMs = 500;
   }
-  const secondSteps = [1, 2, 5, 10, 15, 30, 60, 120, 300];
-  const major = secondSteps.find((s) => s * pxPerSecond >= 90) ?? 300;
-  return { major, minor: Math.max(1, major / 5), unit: "second" as const };
+
+  return {
+    major: majorMs / 1000,
+    minor: minorMs / 1000,
+    majorMs,
+    minorMs,
+    unit: minorMs < 1000 ? ("subsecond" as const) : ("second" as const),
+  };
 };
 
 export const formatTime = (time: number) => {
-  const totalSec = Math.floor(time);
+  const totalMs = Math.max(0, Math.floor(time * 1000));
+  const totalSec = Math.floor(totalMs / 1000);
   const hour = Math.floor(totalSec / 3600);
   const min = Math.floor((totalSec % 3600) / 60)
     .toString()
@@ -41,16 +52,14 @@ export const formatTime = (time: number) => {
 };
 
 export const formatTimeWithMs = (time: number) => {
-  const safe = Math.max(0, time);
-  const totalSec = Math.floor(safe);
+  const totalMs = Math.max(0, Math.floor(time * 1000));
+  const totalSec = Math.floor(totalMs / 1000);
   const hour = Math.floor(totalSec / 3600);
   const min = Math.floor((totalSec % 3600) / 60)
     .toString()
     .padStart(2, "0");
   const sec = (totalSec % 60).toString().padStart(2, "0");
-  const ms = Math.floor((safe - totalSec) * 1000)
-    .toString()
-    .padStart(3, "0");
+  const ms = (totalMs % 1000).toString().padStart(3, "0");
   if (hour > 0) {
     return `${hour.toString().padStart(2, "0")}:${min}:${sec}.${ms}`;
   }

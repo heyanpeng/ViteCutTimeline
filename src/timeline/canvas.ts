@@ -61,14 +61,17 @@ export const drawTimelineCanvas = ({
 
   const pxPerSecond = timeToPixel(1, zoom);
   const tick = getTickStepSeconds(pxPerSecond);
-  const startTime = Math.max(0, pixelToTime(scrollLeft, zoom));
-  const endTime = Math.min(duration, pixelToTime(scrollLeft + width, zoom));
-  const firstMinor = Math.floor(startTime / tick.minor) * tick.minor;
+  const startMs = Math.max(0, Math.floor(pixelToTime(scrollLeft, zoom) * 1000));
+  const endMs = Math.min(Math.floor(duration * 1000), Math.ceil(pixelToTime(scrollLeft + width, zoom) * 1000));
+  const startIndex = Math.floor(startMs / tick.minorMs);
+  const endIndex = Math.ceil(endMs / tick.minorMs);
+  const majorEvery = Math.max(1, Math.floor(tick.majorMs / tick.minorMs));
 
-  for (let t = firstMinor; t <= endTime; t += tick.minor) {
+  for (let i = startIndex; i <= endIndex; i += 1) {
+    const tMs = i * tick.minorMs;
+    const t = tMs / 1000;
     const x = timeToPixel(t, zoom) - scrollLeft;
-    const q = Math.round((t / tick.major) * 1000) / 1000;
-    const isMajor = Math.abs(q - Math.round(q)) < 1e-6;
+    const isMajor = i % majorEvery === 0;
     if (!showMinorTicks && !isMajor) continue;
     ctx.strokeStyle = isMajor ? "#384254" : "#232936";
     ctx.beginPath();
@@ -110,15 +113,18 @@ export const drawRulerCanvas = ({
 
   const pxPerSecond = timeToPixel(1, zoom);
   const tick = getTickStepSeconds(pxPerSecond);
-  const startTime = Math.max(0, pixelToTime(scrollLeft, zoom));
-  const endTime = Math.min(duration, pixelToTime(scrollLeft + width, zoom));
-  const firstMinor = Math.floor(startTime / tick.minor) * tick.minor;
-  const majorTimes: number[] = [];
+  const startMs = Math.max(0, Math.floor(pixelToTime(scrollLeft, zoom) * 1000));
+  const endMs = Math.min(Math.floor(duration * 1000), Math.ceil(pixelToTime(scrollLeft + width, zoom) * 1000));
+  const startIndex = Math.floor(startMs / tick.minorMs);
+  const endIndex = Math.ceil(endMs / tick.minorMs);
+  const majorEvery = Math.max(1, Math.floor(tick.majorMs / tick.minorMs));
+  const majorTimesMs: number[] = [];
 
-  for (let t = firstMinor; t <= endTime; t += tick.minor) {
+  for (let i = startIndex; i <= endIndex; i += 1) {
+    const tMs = i * tick.minorMs;
+    const t = tMs / 1000;
     const x = timeToPixel(t, zoom) - scrollLeft;
-    const q = Math.round((t / tick.major) * 1000) / 1000;
-    const isMajor = Math.abs(q - Math.round(q)) < 1e-6;
+    const isMajor = i % majorEvery === 0;
     if (!showMinorTicks && !isMajor) continue;
     const tickTop = isMajor ? height - 12 : height - 7;
     ctx.strokeStyle = isMajor ? "#7182a1" : "#4a5b77";
@@ -126,14 +132,15 @@ export const drawRulerCanvas = ({
     ctx.moveTo(x + 0.5, tickTop);
     ctx.lineTo(x + 0.5, height);
     ctx.stroke();
-    if (isMajor) majorTimes.push(t);
+    if (isMajor) majorTimesMs.push(tMs);
   }
 
   ctx.fillStyle = "#b4c0d4";
   ctx.font = "11px ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
-  for (const t of majorTimes) {
+  for (const tMs of majorTimesMs) {
+    const t = tMs / 1000;
     const x = timeToPixel(t, zoom) - scrollLeft;
     const label = formatTime(t);
     if (label === "00:00" || label === "00:00:00") continue;
