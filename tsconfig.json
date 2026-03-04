@@ -13,5 +13,6 @@
     "jsx": "react-jsx",
     "strict": true
   },
-  "include": ["src"]
+  "include": ["src/main.tsx", "src/App.tsx", "src/timeline/**/*"],
+  "exclude": ["src/react-timeline/**/*"]
 }

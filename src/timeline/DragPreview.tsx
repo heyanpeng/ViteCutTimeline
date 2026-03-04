@@ -1,10 +1,10 @@
 import React, { PointerEvent } from "react";
-import type { Clip } from "./types";
+import type { TimelineAction } from "./types";
 import { getClipIcon, getClipLabel } from "./utils";
 import "./DragPreview.css";
 
 type DragPreviewProps = {
-  clip: Clip;
+  clip: TimelineAction;
   left: number;
   top: number;
   width: number;
@@ -37,12 +37,8 @@ export const DragPreview: React.FC<DragPreviewProps> = ({
         height,
       }}
     >
-      <div className="drag-preview-icon">
-        {getClipIcon(clip)}
-      </div>
-      <div className="drag-preview-label">
-        {getClipLabel(clip)}
-      </div>
+      <div className="drag-preview-icon">{getClipIcon(clip)}</div>
+      <div className="drag-preview-label">{getClipLabel(clip)}</div>
     </div>
   );
 };

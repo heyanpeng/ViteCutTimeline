@@ -20,33 +20,34 @@ import { drawRulerCanvas, drawTimelineCanvas } from "./canvas";
 import { ClipItem } from "./ClipItem";
 import { DragPreview } from "./DragPreview";
 import type {
-  Clip,
   DragState,
   PendingDragState,
   Selection,
+  TimelineAction,
   TimelineProps,
-  Track,
+  TimelineRow,
   TrackLayout,
   TrimState,
 } from "./types";
 import {
   clamp,
-  frameToPixel,
-  getClipEnd,
-  getTickStepFrames,
-  pixelToFrame,
+  getActionDuration,
+  getTickStepSeconds,
+  pixelToTime,
+  timeToPixel,
 } from "./utils";
 import "./Timeline.css";
 
-export { frameToPixel, pixelToFrame } from "./utils";
+const MIN_ACTION_DURATION = 0.04;
+
+export { timeToPixel as frameToPixel, pixelToTime as pixelToFrame } from "./utils";
 
 export const Timeline: React.FC<TimelineProps> = ({
-  tracks,
-  fps,
-  totalFrames,
+  editorData,
+  duration,
   playing,
   playEndBehavior = "stop",
-  currentFrame,
+  currentTime,
   showMinorTicks = true,
   showHorizontalLines = true,
   dragSnapToClipEdges = true,
@@ -54,15 +55,15 @@ export const Timeline: React.FC<TimelineProps> = ({
   trimSnapToTimelineTicks = true,
   trimSnapThresholdPx = SNAP_PX,
   trimSnapTickMode = "minor",
-  initialFrame = 0,
+  initialTime = 0,
   minZoom = 0.25,
   maxZoom = 8,
   zoom: controlledZoom,
   rowHeight = 52,
   trackGap = 0,
   trackHeightPresets,
-  onTracksChange,
-  onFrameChange,
+  onEditorDataChange,
+  onTimeChange,
   onPlayingChange,
   onZoomChange,
   onRulerPointerDown,
@@ -70,8 +71,8 @@ export const Timeline: React.FC<TimelineProps> = ({
   onRulerDoubleClick,
   onBlankAreaDoubleClick,
 }) => {
-  const isSourceBoundClip = useCallback((clip: Clip) => {
-    return clip.kind === "video" || clip.kind === "audio";
+  const isSourceBoundAction = useCallback((action: TimelineAction) => {
+    return action.kind === "video" || action.kind === "audio";
   }, []);
 
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -80,7 +81,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const playheadRef = useRef<HTMLDivElement | null>(null);
   const scrubbingPointerIdRef = useRef<number | null>(null);
-  const currentFrameRef = useRef(initialFrame);
+  const currentTimeRef = useRef(initialTime);
   const rafRef = useRef<number | null>(null);
 
   const [uncontrolledZoom, setUncontrolledZoom] = useState(1);
@@ -92,7 +93,7 @@ export const Timeline: React.FC<TimelineProps> = ({
 
   const zoom = clamp(controlledZoom ?? uncontrolledZoom, minZoom, maxZoom);
   const getDefaultTrackHeight = useCallback(
-    (role?: Track["role"], kind?: Clip["kind"]) => {
+    (role?: TimelineRow["role"], kind?: TimelineAction["kind"]) => {
       if (role === "main") return trackHeightPresets?.main ?? rowHeight;
       if (role === "audio") return trackHeightPresets?.audio ?? rowHeight;
       if (kind === "video") return trackHeightPresets?.video ?? rowHeight;
@@ -105,39 +106,40 @@ export const Timeline: React.FC<TimelineProps> = ({
     [rowHeight, trackHeightPresets],
   );
 
-  const totalContentWidth = frameToPixel(totalFrames, zoom);
-  const lastClipEndFrame = useMemo(() => {
+  const totalContentWidth = timeToPixel(duration, zoom);
+  const lastActionEnd = useMemo(() => {
     let maxEnd = 0;
-    tracks.forEach((track) => {
-      track.clips.forEach((clip) => {
-        maxEnd = Math.max(maxEnd, getClipEnd(clip));
+    editorData.forEach((row) => {
+      row.actions.forEach((action) => {
+        maxEnd = Math.max(maxEnd, action.end);
       });
     });
-    return clamp(maxEnd, 0, totalFrames);
-  }, [totalFrames, tracks]);
+    return clamp(maxEnd, 0, duration);
+  }, [duration, editorData]);
+
   const trackLayouts = useMemo<TrackLayout[]>(() => {
     let y = RULER_HEIGHT;
-    return tracks.map((track, index) => {
-      const kind = track.clips[0]?.kind;
-      const defaultHeight = getDefaultTrackHeight(track.role, kind);
-      const height = Math.max(MIN_TRACK_HEIGHT, track.height ?? defaultHeight);
-      const layout: TrackLayout = { id: track.id, index, top: y, height, bottom: y + height };
+    return editorData.map((row, index) => {
+      const kind = row.actions[0]?.kind;
+      const defaultHeight = getDefaultTrackHeight(row.role, kind);
+      const height = Math.max(MIN_TRACK_HEIGHT, row.height ?? row.rowHeight ?? defaultHeight);
+      const layout: TrackLayout = { id: row.id, index, top: y, height, bottom: y + height };
       y += height + trackGap;
       return layout;
     });
-  }, [getDefaultTrackHeight, trackGap, tracks]);
+  }, [editorData, getDefaultTrackHeight, trackGap]);
 
   const trackLayoutMap = useMemo(
     () => new Map(trackLayouts.map((layout) => [layout.id, layout])),
     [trackLayouts],
   );
   const trackIndexMap = useMemo(
-    () => new Map(tracks.map((track, index) => [track.id, index])),
-    [tracks],
+    () => new Map(editorData.map((row, index) => [row.id, index])),
+    [editorData],
   );
   const mainTrackIndex = useMemo(
-    () => tracks.findIndex((track) => track.role === "main"),
-    [tracks],
+    () => editorData.findIndex((row) => row.role === "main"),
+    [editorData],
   );
 
   const totalHeight = trackLayouts.length > 0 ? trackLayouts[trackLayouts.length - 1].bottom : RULER_HEIGHT;
@@ -146,15 +148,15 @@ export const Timeline: React.FC<TimelineProps> = ({
 
   const visibleTracks = useMemo(
     () =>
-      tracks.map((track) => ({
-        ...track,
-        clips: track.clips.filter((clip) => {
-          const left = frameToPixel(clip.startFrame, zoom);
-          const right = frameToPixel(clip.startFrame + clip.duration, zoom);
+      editorData.map((row) => ({
+        ...row,
+        actions: row.actions.filter((action) => {
+          const left = timeToPixel(action.start, zoom);
+          const right = timeToPixel(action.end, zoom);
           return right >= visibleLeft && left <= visibleRight;
         }),
       })),
-    [tracks, zoom, visibleLeft, visibleRight],
+    [editorData, visibleLeft, visibleRight, zoom],
   );
 
   const drawCanvas = useCallback(() => {
@@ -166,13 +168,12 @@ export const Timeline: React.FC<TimelineProps> = ({
       scrollLeft: viewport.scrollLeft,
       scrollTop: viewport.scrollTop,
       zoom,
-      fps,
-      totalFrames,
+      duration,
       showMinorTicks,
       showHorizontalLines,
       trackLayouts,
     });
-  }, [fps, showHorizontalLines, showMinorTicks, totalFrames, trackLayouts, viewport.height, viewport.scrollLeft, viewport.scrollTop, viewport.width, zoom]);
+  }, [duration, showHorizontalLines, showMinorTicks, trackLayouts, viewport.height, viewport.scrollLeft, viewport.scrollTop, viewport.width, zoom]);
 
   const drawRuler = useCallback(() => {
     if (!rulerCanvasRef.current) return;
@@ -183,31 +184,30 @@ export const Timeline: React.FC<TimelineProps> = ({
       scrollLeft: viewport.scrollLeft,
       scrollTop: viewport.scrollTop,
       zoom,
-      fps,
-      totalFrames,
+      duration,
       showMinorTicks,
     });
-  }, [fps, showMinorTicks, totalFrames, viewport.height, viewport.scrollLeft, viewport.scrollTop, viewport.width, zoom]);
+  }, [duration, showMinorTicks, viewport.height, viewport.scrollLeft, viewport.scrollTop, viewport.width, zoom]);
 
   const updatePlayheadPosition = useCallback(
-    (frame: number) => {
+    (time: number) => {
       if (!playheadRef.current) return;
-      const x = frameToPixel(frame, zoom) - (scrollRef.current?.scrollLeft ?? 0);
+      const x = timeToPixel(time, zoom) - (scrollRef.current?.scrollLeft ?? 0);
       playheadRef.current.style.transform = `translateX(${x}px)`;
     },
     [zoom],
   );
 
   useEffect(() => {
-    updatePlayheadPosition(currentFrameRef.current);
+    updatePlayheadPosition(currentTimeRef.current);
   }, [updatePlayheadPosition]);
 
   useEffect(() => {
-    if (currentFrame == null) return;
-    const next = clamp(currentFrame, 0, totalFrames);
-    currentFrameRef.current = next;
+    if (currentTime == null) return;
+    const next = clamp(currentTime, 0, duration);
+    currentTimeRef.current = next;
     updatePlayheadPosition(next);
-  }, [currentFrame, totalFrames, updatePlayheadPosition]);
+  }, [currentTime, duration, updatePlayheadPosition]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -221,7 +221,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         scrollLeft: scrollEl.scrollLeft,
         scrollTop: scrollEl.scrollTop,
       });
-      updatePlayheadPosition(currentFrameRef.current);
+      updatePlayheadPosition(currentTimeRef.current);
     };
 
     syncViewport();
@@ -275,27 +275,26 @@ export const Timeline: React.FC<TimelineProps> = ({
     }
 
     let lastTime = performance.now();
-    let lastReported = Math.floor(currentFrameRef.current);
+    let lastReported = currentTimeRef.current;
 
     const loop = (now: number) => {
       const elapsed = (now - lastTime) / 1000;
       lastTime = now;
-      const playbackEndFrame = Math.max(0, lastClipEndFrame);
-      const nextFrame = clamp(currentFrameRef.current + elapsed * fps, 0, playbackEndFrame);
-      currentFrameRef.current = nextFrame;
-      updatePlayheadPosition(nextFrame);
+      const playbackEnd = Math.max(0, lastActionEnd);
+      const nextTime = clamp(currentTimeRef.current + elapsed, 0, playbackEnd);
+      currentTimeRef.current = nextTime;
+      updatePlayheadPosition(nextTime);
 
-      const rounded = Math.floor(nextFrame);
-      if (rounded !== lastReported) {
-        lastReported = rounded;
-        onFrameChange?.(rounded);
+      if (Math.abs(nextTime - lastReported) >= 0.01) {
+        lastReported = nextTime;
+        onTimeChange?.(nextTime);
       }
 
-      if (nextFrame >= playbackEndFrame) {
-        if (playEndBehavior === "loop" && playbackEndFrame > 0) {
-          currentFrameRef.current = 0;
+      if (nextTime >= playbackEnd) {
+        if (playEndBehavior === "loop" && playbackEnd > 0) {
+          currentTimeRef.current = 0;
           updatePlayheadPosition(0);
-          onFrameChange?.(0);
+          onTimeChange?.(0);
           rafRef.current = requestAnimationFrame(loop);
         } else {
           onPlayingChange?.(false);
@@ -311,42 +310,42 @@ export const Timeline: React.FC<TimelineProps> = ({
       rafRef.current = null;
       lastTime = 0;
     };
-  }, [fps, lastClipEndFrame, onFrameChange, onPlayingChange, playEndBehavior, playing, updatePlayheadPosition]);
+  }, [lastActionEnd, onPlayingChange, onTimeChange, playEndBehavior, playing, updatePlayheadPosition]);
 
-  const snapFrame = useCallback(
-    (clipId: string, proposedStart: number, duration: number) => {
-      const thresholdFrames = pixelToFrame(SNAP_PX, zoom);
-      const candidates: number[] = [Math.floor(currentFrameRef.current)];
+  const snapStartTime = useCallback(
+    (actionId: string, proposedStart: number, actionDuration: number) => {
+      const thresholdTime = pixelToTime(SNAP_PX, zoom);
+      const candidates: number[] = [currentTimeRef.current];
       if (dragSnapToClipEdges) {
-        tracks.forEach((track) => {
-          track.clips.forEach((clip) => {
-            if (clip.id === clipId) return;
-            candidates.push(clip.startFrame, clip.startFrame + clip.duration);
+        editorData.forEach((row) => {
+          row.actions.forEach((action) => {
+            if (action.id === actionId) return;
+            candidates.push(action.start, action.end);
           });
         });
       }
 
-      let best: { delta: number; frame: number } | null = null;
-      const movingEdges = [proposedStart, proposedStart + duration];
+      let best: { delta: number; time: number } | null = null;
+      const movingEdges = [proposedStart, proposedStart + actionDuration];
       for (const target of candidates) {
         for (const edge of movingEdges) {
           const delta = target - edge;
-          if (Math.abs(delta) > thresholdFrames) continue;
+          if (Math.abs(delta) > thresholdTime) continue;
           if (!best || Math.abs(delta) < Math.abs(best.delta)) {
-            best = { delta, frame: target };
+            best = { delta, time: target };
           }
         }
       }
-      if (!best) return { startFrame: proposedStart, snappedFrame: null as number | null };
-      return { startFrame: proposedStart + best.delta, snappedFrame: best.frame };
+      if (!best) return { start: proposedStart, snappedTime: null as number | null };
+      return { start: proposedStart + best.delta, snappedTime: best.time };
     },
-    [dragSnapToClipEdges, tracks, zoom],
+    [dragSnapToClipEdges, editorData, zoom],
   );
 
   const getTrackIdByClientY = useCallback(
     (clientY: number) => {
       const scrollEl = scrollRef.current;
-      if (!scrollEl || tracks.length === 0) return null;
+      if (!scrollEl || editorData.length === 0) return null;
       const rect = scrollEl.getBoundingClientRect();
       const contentY = clientY - rect.top + scrollEl.scrollTop;
       const first = trackLayouts[0];
@@ -370,30 +369,30 @@ export const Timeline: React.FC<TimelineProps> = ({
       }, null);
       return nearest?.id ?? last.id;
     },
-    [trackLayouts, tracks.length],
+    [editorData.length, trackLayouts],
   );
 
-  const createNextTrack = useCallback((clipKind?: Clip["kind"]): Track => {
-    const existingIds = new Set(tracks.map((track) => track.id));
-    let index = tracks.length + 1;
+  const createNextTrack = useCallback((actionKind?: TimelineAction["kind"]): TimelineRow => {
+    const existingIds = new Set(editorData.map((row) => row.id));
+    let index = editorData.length + 1;
     let id = `track-${index}`;
     while (existingIds.has(id)) {
       index += 1;
       id = `track-${index}`;
     }
-    const role = clipKind === "audio" ? "audio" : "normal";
+    const role = actionKind === "audio" ? "audio" : "normal";
     return {
       id,
       name: `Track ${index}`,
       role,
-      height: getDefaultTrackHeight(role, clipKind),
-      clips: [],
+      height: getDefaultTrackHeight(role, actionKind),
+      actions: [],
     };
-  }, [getDefaultTrackHeight, tracks]);
+  }, [editorData, getDefaultTrackHeight]);
 
   const canCreateTrackAtIndex = useCallback(
-    (clip: Clip, index: number) => {
-      const movingKind = clip.kind ?? "video";
+    (action: TimelineAction, index: number) => {
+      const movingKind = action.kind ?? "video";
       if (movingKind === "audio") {
         if (mainTrackIndex < 0) return true;
         return index > mainTrackIndex;
@@ -404,16 +403,16 @@ export const Timeline: React.FC<TimelineProps> = ({
     [mainTrackIndex],
   );
 
-  const canPlaceClipOnTrack = useCallback(
-    (clip: Clip, targetTrackId: string) => {
+  const canPlaceActionOnTrack = useCallback(
+    (action: TimelineAction, targetTrackId: string) => {
       const targetTrackIndex = trackIndexMap.get(targetTrackId);
       if (targetTrackIndex == null) return false;
-      const targetTrack = tracks[targetTrackIndex];
+      const targetTrack = editorData[targetTrackIndex];
       if (!targetTrack) return false;
-      const movingKind = clip.kind ?? "video";
+      const movingKind = action.kind ?? "video";
       const fixedKinds = new Set(
-        targetTrack.clips
-          .filter((item) => item.id !== clip.id)
+        targetTrack.actions
+          .filter((item) => item.id !== action.id)
           .map((item) => item.kind ?? "video"),
       );
       if (fixedKinds.size > 0 && !fixedKinds.has(movingKind)) return false;
@@ -421,20 +420,15 @@ export const Timeline: React.FC<TimelineProps> = ({
       if (targetTrack.role === "main" && movingKind !== "video") return false;
       if (targetTrack.role === "audio" && movingKind !== "audio") return false;
       if (movingKind === "audio" && targetTrack.role !== "audio") return false;
-      if (movingKind !== "audio" && mainTrackIndex >= 0 && targetTrackIndex > mainTrackIndex) {
-        return false;
-      }
-
-      if (movingKind === "audio" && mainTrackIndex >= 0 && targetTrackIndex <= mainTrackIndex) {
-        return false;
-      }
+      if (movingKind !== "audio" && mainTrackIndex >= 0 && targetTrackIndex > mainTrackIndex) return false;
+      if (movingKind === "audio" && mainTrackIndex >= 0 && targetTrackIndex <= mainTrackIndex) return false;
       return true;
     },
-    [mainTrackIndex, trackIndexMap, tracks],
+    [editorData, mainTrackIndex, trackIndexMap],
   );
 
   const getInsertTrackCandidate = useCallback(
-    (clientY: number, clip: Clip) => {
+    (clientY: number, action: TimelineAction) => {
       const scrollEl = scrollRef.current;
       if (!scrollEl) return null;
       const rect = scrollEl.getBoundingClientRect();
@@ -445,7 +439,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         const mid = (trackLayouts[i].bottom + trackLayouts[i + 1].top) / 2;
         if (Math.abs(contentY - mid) <= threshold) {
           const index = i + 1;
-          if (!canCreateTrackAtIndex(clip, index)) return null;
+          if (!canCreateTrackAtIndex(action, index)) return null;
           return { index, lineY: mid };
         }
       }
@@ -453,44 +447,43 @@ export const Timeline: React.FC<TimelineProps> = ({
       if (trackLayouts.length > 0) {
         const last = trackLayouts[trackLayouts.length - 1];
         const endLine = last.bottom + Math.max(2, trackGap / 2);
-        if (contentY > last.bottom + CREATE_TRACK_GAP_PX && canCreateTrackAtIndex(clip, tracks.length)) {
-          return { index: tracks.length, lineY: endLine };
+        if (contentY > last.bottom + CREATE_TRACK_GAP_PX && canCreateTrackAtIndex(action, editorData.length)) {
+          return { index: editorData.length, lineY: endLine };
         }
       }
 
       return null;
     },
-    [canCreateTrackAtIndex, trackGap, trackLayouts, tracks.length],
+    [canCreateTrackAtIndex, editorData.length, trackGap, trackLayouts],
   );
 
-  const getOtherTrackClips = useCallback(
-    (trackId: string, clipId: string) => {
-      const track = tracks.find((item) => item.id === trackId);
-      if (!track) return [];
-      return track.clips
-        .filter((clip) => clip.id !== clipId)
-        .sort((a, b) => a.startFrame - b.startFrame);
+  const getOtherTrackActions = useCallback(
+    (rowId: string, actionId: string) => {
+      const row = editorData.find((item) => item.id === rowId);
+      if (!row) return [];
+      return row.actions
+        .filter((action) => action.id !== actionId)
+        .sort((a, b) => a.start - b.start);
     },
-    [tracks],
+    [editorData],
   );
 
-  const getSelectedClipContext = useCallback(() => {
+  const getSelectedActionContext = useCallback(() => {
     if (!selection) return null;
-    const trackIndex = tracks.findIndex((track) => track.id === selection.trackId);
+    const trackIndex = editorData.findIndex((row) => row.id === selection.rowId);
     if (trackIndex < 0) return null;
-    const track = tracks[trackIndex];
-    const clipIndex = track.clips.findIndex((clip) => clip.id === selection.clipId);
-    if (clipIndex < 0) return null;
-    const clip = track.clips[clipIndex];
-    const playheadFrame = Math.floor(currentFrameRef.current);
-    const clipEnd = getClipEnd(clip);
-    if (playheadFrame <= clip.startFrame || playheadFrame >= clipEnd) return null;
-    return { trackIndex, track, clipIndex, clip, playheadFrame, clipEnd };
-  }, [selection, tracks]);
+    const row = editorData[trackIndex];
+    const actionIndex = row.actions.findIndex((action) => action.id === selection.actionId);
+    if (actionIndex < 0) return null;
+    const action = row.actions[actionIndex];
+    const playheadTime = currentTimeRef.current;
+    if (playheadTime <= action.start || playheadTime >= action.end) return null;
+    return { trackIndex, row, actionIndex, action, playheadTime };
+  }, [editorData, selection]);
 
-  const createSplitClipId = useCallback(
-    (track: Track, baseId: string) => {
-      const existing = new Set(track.clips.map((clip) => clip.id));
+  const createSplitActionId = useCallback(
+    (row: TimelineRow, baseId: string) => {
+      const existing = new Set(row.actions.map((action) => action.id));
       let index = 1;
       let nextId = `${baseId}-split-${index}`;
       while (existing.has(nextId)) {
@@ -503,111 +496,125 @@ export const Timeline: React.FC<TimelineProps> = ({
   );
 
   const splitSelectedClipAtPlayhead = useCallback(() => {
-    const ctx = getSelectedClipContext();
-    if (!ctx || !onTracksChange) return;
-    const { trackIndex, track, clipIndex, clip, playheadFrame, clipEnd } = ctx;
-    const leftDuration = playheadFrame - clip.startFrame;
-    const rightDuration = clipEnd - playheadFrame;
-    if (leftDuration <= 0 || rightDuration <= 0) return;
+    const ctx = getSelectedActionContext();
+    if (!ctx || !onEditorDataChange) return;
+    const { trackIndex, row, actionIndex, action, playheadTime } = ctx;
+    if (playheadTime <= action.start || playheadTime >= action.end) return;
 
-    const rightClip: Clip = {
-      ...clip,
-      id: createSplitClipId(track, clip.id),
-      startFrame: playheadFrame,
-      displayStart: clip.displayStart + leftDuration,
-      duration: rightDuration,
+    const leftDuration = playheadTime - action.start;
+    const rightDuration = action.end - playheadTime;
+    if (leftDuration <= MIN_ACTION_DURATION || rightDuration <= MIN_ACTION_DURATION) return;
+
+    const sourceIn = action.inPoint ?? 0;
+    const sourceOut = action.outPoint ?? sourceIn + getActionDuration(action);
+
+    const rightAction: TimelineAction = {
+      ...action,
+      id: createSplitActionId(row, action.id),
+      start: playheadTime,
+      end: action.end,
+      inPoint: sourceIn + leftDuration,
+      outPoint: sourceOut,
     };
-    const leftClip: Clip = { ...clip, duration: leftDuration };
+    const leftAction: TimelineAction = {
+      ...action,
+      start: action.start,
+      end: playheadTime,
+      inPoint: sourceIn,
+      outPoint: sourceIn + leftDuration,
+    };
 
-    const next = tracks.map((item, index) => {
+    const next = editorData.map((item, index) => {
       if (index !== trackIndex) return item;
-      const clips = [...item.clips];
-      clips.splice(clipIndex, 1, leftClip, rightClip);
-      return { ...item, clips };
+      const actions = [...item.actions];
+      actions.splice(actionIndex, 1, leftAction, rightAction);
+      return { ...item, actions };
     });
-    onTracksChange(next);
-    setSelection({ trackId: track.id, clipId: rightClip.id });
-  }, [createSplitClipId, getSelectedClipContext, onTracksChange, tracks]);
+    onEditorDataChange(next);
+    setSelection({ rowId: row.id, actionId: rightAction.id });
+  }, [createSplitActionId, editorData, getSelectedActionContext, onEditorDataChange]);
 
   const trimSelectedClipLeftToPlayhead = useCallback(() => {
-    const ctx = getSelectedClipContext();
-    if (!ctx || !onTracksChange) return;
-    const { trackIndex, clipIndex, clip, playheadFrame, clipEnd } = ctx;
-    if (playheadFrame <= clip.startFrame || playheadFrame >= clipEnd) return;
+    const ctx = getSelectedActionContext();
+    if (!ctx || !onEditorDataChange) return;
+    const { trackIndex, actionIndex, action, playheadTime } = ctx;
+    if (playheadTime <= action.start || playheadTime >= action.end) return;
 
-    const next = tracks.map((item, index) => {
+    const next = editorData.map((item, index) => {
       if (index !== trackIndex) return item;
-      const clips = item.clips.map((current, currentIndex) => {
-        if (currentIndex !== clipIndex) return current;
+      const actions = item.actions.map((current, currentIndex) => {
+        if (currentIndex !== actionIndex) return current;
+        const delta = playheadTime - current.start;
         return {
           ...current,
-          startFrame: playheadFrame,
-          displayStart: current.displayStart + (playheadFrame - current.startFrame),
-          duration: clipEnd - playheadFrame,
+          start: playheadTime,
+          inPoint: (current.inPoint ?? 0) + delta,
         };
       });
-      return { ...item, clips };
+      return { ...item, actions };
     });
-    onTracksChange(next);
-  }, [getSelectedClipContext, onTracksChange, tracks]);
+    onEditorDataChange(next);
+  }, [editorData, getSelectedActionContext, onEditorDataChange]);
 
   const trimSelectedClipRightToPlayhead = useCallback(() => {
-    const ctx = getSelectedClipContext();
-    if (!ctx || !onTracksChange) return;
-    const { trackIndex, clipIndex, clip, playheadFrame } = ctx;
-    if (playheadFrame <= clip.startFrame) return;
+    const ctx = getSelectedActionContext();
+    if (!ctx || !onEditorDataChange) return;
+    const { trackIndex, actionIndex, action, playheadTime } = ctx;
+    if (playheadTime <= action.start) return;
 
-    const next = tracks.map((item, index) => {
+    const next = editorData.map((item, index) => {
       if (index !== trackIndex) return item;
-      const clips = item.clips.map((current, currentIndex) => {
-        if (currentIndex !== clipIndex) return current;
+      const actions = item.actions.map((current, currentIndex) => {
+        if (currentIndex !== actionIndex) return current;
+        const delta = playheadTime - current.end;
         return {
           ...current,
-          duration: playheadFrame - current.startFrame,
+          end: playheadTime,
+          outPoint: (current.outPoint ?? current.inPoint ?? 0) + getActionDuration(current) + delta,
         };
       });
-      return { ...item, clips };
+      return { ...item, actions };
     });
-    onTracksChange(next);
-  }, [getSelectedClipContext, onTracksChange, tracks]);
+    onEditorDataChange(next);
+  }, [editorData, getSelectedActionContext, onEditorDataChange]);
 
   const getValidStartIntervals = useCallback(
-    (trackId: string, clipId: string, duration: number): Array<[number, number]> => {
-      const others = getOtherTrackClips(trackId, clipId);
+    (rowId: string, actionId: string, actionDuration: number): Array<[number, number]> => {
+      const others = getOtherTrackActions(rowId, actionId);
       const intervals: Array<[number, number]> = [];
       let cursor = 0;
       for (const other of others) {
-        if (other.startFrame > cursor && other.startFrame - cursor >= duration) {
-          intervals.push([cursor, other.startFrame - duration]);
+        if (other.start > cursor && other.start - cursor >= actionDuration) {
+          intervals.push([cursor, other.start - actionDuration]);
         }
-        cursor = Math.max(cursor, getClipEnd(other));
+        cursor = Math.max(cursor, other.end);
       }
-      if (totalFrames - cursor >= duration) {
-        intervals.push([cursor, totalFrames - duration]);
+      if (duration - cursor >= actionDuration) {
+        intervals.push([cursor, duration - actionDuration]);
       }
       return intervals;
     },
-    [getOtherTrackClips, totalFrames],
+    [duration, getOtherTrackActions],
   );
 
   const resolveStartInTrack = useCallback(
-    (trackId: string, clipId: string, duration: number, proposedStart: number) => {
-      const intervals = getValidStartIntervals(trackId, clipId, duration);
+    (rowId: string, actionId: string, actionDuration: number, proposedStart: number) => {
+      const intervals = getValidStartIntervals(rowId, actionId, actionDuration);
       if (intervals.length === 0) return null;
       for (const [start, end] of intervals) {
         if (proposedStart >= start && proposedStart <= end) return proposedStart;
       }
-      const thresholdFrames = pixelToFrame(SNAP_PX, zoom);
+      const threshold = pixelToTime(SNAP_PX, zoom);
       let nearestBoundary: number | null = null;
       let nearestDistance = Number.POSITIVE_INFINITY;
       for (const [start, end] of intervals) {
         const startDistance = Math.abs(proposedStart - start);
-        if (startDistance <= thresholdFrames && startDistance < nearestDistance) {
+        if (startDistance <= threshold && startDistance < nearestDistance) {
           nearestDistance = startDistance;
           nearestBoundary = start;
         }
         const endDistance = Math.abs(proposedStart - end);
-        if (endDistance <= thresholdFrames && endDistance < nearestDistance) {
+        if (endDistance <= threshold && endDistance < nearestDistance) {
           nearestDistance = endDistance;
           nearestBoundary = end;
         }
@@ -618,46 +625,45 @@ export const Timeline: React.FC<TimelineProps> = ({
     [getValidStartIntervals, zoom],
   );
 
-  const snapTrimEdgeFrame = useCallback(
-    (trackId: string, clipId: string, movingFrame: number) => {
-      const thresholdFrames = pixelToFrame(trimSnapThresholdPx, zoom);
-      let bestFrame: number | null = null;
+  const snapTrimEdgeTime = useCallback(
+    (rowId: string, actionId: string, movingTime: number) => {
+      const threshold = pixelToTime(trimSnapThresholdPx, zoom);
+      let bestTime: number | null = null;
       let bestDistance = Number.POSITIVE_INFINITY;
 
       if (trimSnapToClipEdges) {
-        const others = getOtherTrackClips(trackId, clipId);
-        for (const clip of others) {
-          const candidates = [clip.startFrame, getClipEnd(clip)];
+        const others = getOtherTrackActions(rowId, actionId);
+        for (const action of others) {
+          const candidates = [action.start, action.end];
           for (const candidate of candidates) {
-            const distance = Math.abs(candidate - movingFrame);
-            if (distance <= thresholdFrames && distance < bestDistance) {
+            const distance = Math.abs(candidate - movingTime);
+            if (distance <= threshold && distance < bestDistance) {
               bestDistance = distance;
-              bestFrame = candidate;
+              bestTime = candidate;
             }
           }
         }
       }
 
       if (trimSnapToTimelineTicks) {
-        const pxPerFrame = frameToPixel(1, zoom);
-        const tick = getTickStepFrames(pxPerFrame, fps);
+        const pxPerSecond = timeToPixel(1, zoom);
+        const tick = getTickStepSeconds(pxPerSecond);
         const step = trimSnapTickMode === "major" ? tick.major : tick.minor;
-        const nearestTick = Math.round(movingFrame / step) * step;
-        const clampedTick = clamp(nearestTick, 0, totalFrames);
-        const distance = Math.abs(clampedTick - movingFrame);
-        if (distance <= thresholdFrames && distance < bestDistance) {
+        const nearestTick = Math.round(movingTime / step) * step;
+        const clampedTick = clamp(nearestTick, 0, duration);
+        const distance = Math.abs(clampedTick - movingTime);
+        if (distance <= threshold && distance < bestDistance) {
           bestDistance = distance;
-          bestFrame = clampedTick;
+          bestTime = clampedTick;
         }
       }
 
-      if (bestFrame == null) return { frame: movingFrame, snappedFrame: null as number | null };
-      return { frame: bestFrame, snappedFrame: bestFrame };
+      if (bestTime == null) return { time: movingTime, snappedTime: null as number | null };
+      return { time: bestTime, snappedTime: bestTime };
     },
     [
-      fps,
-      getOtherTrackClips,
-      totalFrames,
+      duration,
+      getOtherTrackActions,
       trimSnapThresholdPx,
       trimSnapTickMode,
       trimSnapToClipEdges,
@@ -666,15 +672,15 @@ export const Timeline: React.FC<TimelineProps> = ({
     ],
   );
 
-  const onClipPointerDown = (event: PointerEvent<HTMLDivElement>, trackId: string, clip: Clip) => {
+  const onClipPointerDown = (event: PointerEvent<HTMLDivElement>, rowId: string, action: TimelineAction) => {
     if (event.button !== 0) return;
     if (trim) return;
     event.preventDefault();
     (event.currentTarget as HTMLDivElement).setPointerCapture(event.pointerId);
-    setSelection({ trackId, clipId: clip.id });
+    setSelection({ rowId, actionId: action.id });
     setPendingDrag({
-      trackId,
-      clip,
+      rowId,
+      action,
       pointerId: event.pointerId,
       startClientX: event.clientX,
       startClientY: event.clientY,
@@ -688,18 +694,18 @@ export const Timeline: React.FC<TimelineProps> = ({
       const dy = event.clientY - pendingDrag.startClientY;
       if (Math.hypot(dx, dy) < DRAG_START_THRESHOLD_PX) return;
       setDrag({
-        originTrackId: pendingDrag.trackId,
-        previewTrackId: pendingDrag.trackId,
-        insertTrackIndex: null,
+        originRowId: pendingDrag.rowId,
+        previewRowId: pendingDrag.rowId,
+        insertRowIndex: null,
         insertLineY: null,
-        clipId: pendingDrag.clip.id,
-        clip: pendingDrag.clip,
+        actionId: pendingDrag.action.id,
+        action: pendingDrag.action,
         pointerId: pendingDrag.pointerId,
         startClientX: pendingDrag.startClientX,
-        originFrame: pendingDrag.clip.startFrame,
-        previewStartFrame: pendingDrag.clip.startFrame,
-        commitStartFrame: pendingDrag.clip.startFrame,
-        snappedFrame: null,
+        originStart: pendingDrag.action.start,
+        previewStart: pendingDrag.action.start,
+        commitStart: pendingDrag.action.start,
+        snappedTime: null,
         isDropValid: true,
       });
       setPendingDrag(null);
@@ -725,28 +731,30 @@ export const Timeline: React.FC<TimelineProps> = ({
     }
 
     const dx = event.clientX - drag.startClientX;
-    const deltaFrame = Math.round(pixelToFrame(dx, zoom));
-    const proposed = clamp(drag.originFrame + deltaFrame, 0, totalFrames - drag.clip.duration);
-    const snapped = snapFrame(drag.clipId, proposed, drag.clip.duration);
-    const visualStart = clamp(snapped.startFrame, 0, totalFrames - drag.clip.duration);
-    const insertCandidate = getInsertTrackCandidate(event.clientY, drag.clip);
-    const targetTrackId = getTrackIdByClientY(event.clientY) ?? drag.previewTrackId;
-    const canPlace = canPlaceClipOnTrack(drag.clip, targetTrackId);
+    const deltaTime = pixelToTime(dx, zoom);
+    const actionDuration = getActionDuration(drag.action);
+    const proposed = clamp(drag.originStart + deltaTime, 0, duration - actionDuration);
+    const snapped = snapStartTime(drag.actionId, proposed, actionDuration);
+    const visualStart = clamp(snapped.start, 0, duration - actionDuration);
+    const insertCandidate = getInsertTrackCandidate(event.clientY, drag.action);
+    const targetRowId = getTrackIdByClientY(event.clientY) ?? drag.previewRowId;
+    const canPlace = canPlaceActionOnTrack(drag.action, targetRowId);
     const resolvedStart = insertCandidate
       ? visualStart
       : canPlace
-        ? resolveStartInTrack(targetTrackId, drag.clipId, drag.clip.duration, visualStart)
+        ? resolveStartInTrack(targetRowId, drag.actionId, actionDuration, visualStart)
         : null;
+
     setDrag((prev) =>
       prev
         ? {
             ...prev,
-            previewTrackId: targetTrackId,
-            previewStartFrame: visualStart,
-            insertTrackIndex: insertCandidate?.index ?? null,
+            previewRowId: targetRowId,
+            previewStart: visualStart,
+            insertRowIndex: insertCandidate?.index ?? null,
             insertLineY: insertCandidate?.lineY ?? null,
-            commitStartFrame: resolvedStart,
-            snappedFrame: resolvedStart != null ? snapped.snappedFrame : null,
+            commitStart: resolvedStart,
+            snappedTime: resolvedStart != null ? snapped.snappedTime : null,
             isDropValid: resolvedStart != null,
           }
         : prev,
@@ -764,146 +772,133 @@ export const Timeline: React.FC<TimelineProps> = ({
       return;
     }
 
-    const movedClip: Clip = {
-      ...drag.clip,
-      startFrame: drag.commitStartFrame ?? drag.previewStartFrame,
+    const actionDuration = getActionDuration(drag.action);
+    const movedAction: TimelineAction = {
+      ...drag.action,
+      start: drag.commitStart ?? drag.previewStart,
+      end: (drag.commitStart ?? drag.previewStart) + actionDuration,
     };
-    const insertedTrack =
-      drag.insertTrackIndex != null
-        ? createNextTrack(drag.clip.kind)
-        : null;
-    const workingTracks =
-      insertedTrack && drag.insertTrackIndex != null
+    const insertedTrack = drag.insertRowIndex != null ? createNextTrack(drag.action.kind) : null;
+    const workingRows =
+      insertedTrack && drag.insertRowIndex != null
         ? (() => {
-            const nextTracks = [...tracks];
-            nextTracks.splice(drag.insertTrackIndex, 0, insertedTrack);
-            return nextTracks;
+            const nextRows = [...editorData];
+            nextRows.splice(drag.insertRowIndex, 0, insertedTrack);
+            return nextRows;
           })()
-        : tracks;
-    const finalPreviewTrackId = insertedTrack?.id ?? drag.previewTrackId;
-    const next = workingTracks.map((track) => {
-      if (track.id === drag.originTrackId && drag.originTrackId === finalPreviewTrackId) {
+        : editorData;
+    const finalPreviewRowId = insertedTrack?.id ?? drag.previewRowId;
+    const next = workingRows.map((row) => {
+      if (row.id === drag.originRowId && drag.originRowId === finalPreviewRowId) {
         return {
-          ...track,
-          clips: track.clips.map((clip) => (clip.id === drag.clipId ? movedClip : clip)),
+          ...row,
+          actions: row.actions.map((action) => (action.id === drag.actionId ? movedAction : action)),
         };
       }
-      if (track.id === drag.originTrackId) {
-        return { ...track, clips: track.clips.filter((clip) => clip.id !== drag.clipId) };
+      if (row.id === drag.originRowId) {
+        return { ...row, actions: row.actions.filter((action) => action.id !== drag.actionId) };
       }
-      if (track.id === finalPreviewTrackId) {
-        return { ...track, clips: [...track.clips, movedClip] };
+      if (row.id === finalPreviewRowId) {
+        return { ...row, actions: [...row.actions, movedAction] };
       }
-      return track;
+      return row;
     });
-    const shouldDeleteEmptyOriginTrack = drag.originTrackId !== finalPreviewTrackId;
-    const finalizedTracks = shouldDeleteEmptyOriginTrack
+    const shouldDeleteEmptyOriginTrack = drag.originRowId !== finalPreviewRowId;
+    const finalizedRows = shouldDeleteEmptyOriginTrack
       ? next.filter(
-          (track) =>
-            !(
-              track.id === drag.originTrackId &&
-              track.clips.length === 0 &&
-              track.role !== "main"
-            ),
+          (row) => !(row.id === drag.originRowId && row.actions.length === 0 && row.role !== "main"),
         )
       : next;
-    onTracksChange?.(finalizedTracks);
+    onEditorDataChange?.(finalizedRows);
     setDrag(null);
   };
 
   const onTrimPointerDown = (
     event: PointerEvent<HTMLDivElement>,
-    trackId: string,
-    clip: Clip,
+    rowId: string,
+    action: TimelineAction,
     side: "left" | "right",
   ) => {
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     (event.currentTarget as HTMLDivElement).setPointerCapture(event.pointerId);
-    setSelection({ trackId, clipId: clip.id });
+    setSelection({ rowId, actionId: action.id });
     setTrim({
-      trackId,
-      clipId: clip.id,
+      rowId,
+      actionId: action.id,
       side,
       pointerId: event.pointerId,
       startClientX: event.clientX,
-      origin: clip,
-      preview: { ...clip },
-      snappedFrame: null,
+      origin: action,
+      preview: { ...action },
+      snappedTime: null,
     });
   };
 
   const onTrimPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     if (!trim || trim.pointerId !== event.pointerId) return;
 
-    const others = getOtherTrackClips(trim.trackId, trim.clipId);
-    const deltaFrame = Math.round(pixelToFrame(event.clientX - trim.startClientX, zoom));
+    const others = getOtherTrackActions(trim.rowId, trim.actionId);
+    const deltaTime = pixelToTime(event.clientX - trim.startClientX, zoom);
     if (trim.side === "left") {
-      const fixedEnd = getClipEnd(trim.origin);
-      const leftBoundary = others.reduce((maxEnd, clip) => {
-        const clipEnd = getClipEnd(clip);
-        if (clipEnd <= fixedEnd && clipEnd > maxEnd) return clipEnd;
+      const fixedEnd = trim.origin.end;
+      const leftBoundary = others.reduce((maxEnd, action) => {
+        if (action.end <= fixedEnd && action.end > maxEnd) return action.end;
         return maxEnd;
       }, 0);
-      const sourceBoundMinDelta = isSourceBoundClip(trim.origin)
-        ? -trim.origin.displayStart
+      const sourceBoundMinDelta = isSourceBoundAction(trim.origin)
+        ? -(trim.origin.inPoint ?? 0)
         : Number.NEGATIVE_INFINITY;
-      const minDelta = Math.max(
-        sourceBoundMinDelta,
-        -trim.origin.startFrame,
-        leftBoundary - trim.origin.startFrame,
-      );
-      const maxDelta = trim.origin.duration - 1;
-      const delta = clamp(deltaFrame, minDelta, maxDelta);
-      const proposedStart = trim.origin.startFrame + delta;
-      const snapped = snapTrimEdgeFrame(trim.trackId, trim.clipId, proposedStart);
-      const minStart = trim.origin.startFrame + minDelta;
-      const maxStart = trim.origin.startFrame + maxDelta;
-      const finalStart = clamp(snapped.frame, minStart, maxStart);
+      const minDelta = Math.max(sourceBoundMinDelta, -trim.origin.start, leftBoundary - trim.origin.start);
+      const maxDelta = getActionDuration(trim.origin) - MIN_ACTION_DURATION;
+      const delta = clamp(deltaTime, minDelta, maxDelta);
+      const proposedStart = trim.origin.start + delta;
+      const snapped = snapTrimEdgeTime(trim.rowId, trim.actionId, proposedStart);
+      const minStart = trim.origin.start + minDelta;
+      const maxStart = trim.origin.start + maxDelta;
+      const finalStart = clamp(snapped.time, minStart, maxStart);
       setTrim((prev) =>
         prev
           ? {
               ...prev,
               preview: {
                 ...prev.origin,
-                startFrame: finalStart,
-                displayStart: prev.origin.displayStart + (finalStart - prev.origin.startFrame),
-                duration: fixedEnd - finalStart,
+                start: finalStart,
+                inPoint: (prev.origin.inPoint ?? 0) + (finalStart - prev.origin.start),
+                end: fixedEnd,
               },
-              snappedFrame: finalStart === snapped.frame ? snapped.snappedFrame : null,
+              snappedTime: finalStart === snapped.time ? snapped.snappedTime : null,
             }
           : prev,
       );
       return;
     }
 
-    const minDelta = 1 - trim.origin.duration;
-    const rightNeighborStart = others.reduce((minStart, clip) => {
-      if (clip.startFrame >= getClipEnd(trim.origin) && clip.startFrame < minStart) return clip.startFrame;
+    const minDelta = MIN_ACTION_DURATION - getActionDuration(trim.origin);
+    const rightNeighborStart = others.reduce((minStart, action) => {
+      if (action.start >= trim.origin.end && action.start < minStart) return action.start;
       return minStart;
     }, Number.POSITIVE_INFINITY);
-    const maxByTimeline = totalFrames - trim.origin.startFrame - trim.origin.duration;
-    const maxByNeighbor =
-      rightNeighborStart === Number.POSITIVE_INFINITY
-        ? maxByTimeline
-        : rightNeighborStart - trim.origin.startFrame - trim.origin.duration;
+    const maxByTimeline = duration - trim.origin.end;
+    const maxByNeighbor = rightNeighborStart === Number.POSITIVE_INFINITY ? maxByTimeline : rightNeighborStart - trim.origin.end;
     const maxDelta = Math.min(maxByTimeline, maxByNeighbor);
-    const delta = clamp(deltaFrame, minDelta, maxDelta);
-    const proposedEnd = getClipEnd(trim.origin) + delta;
-    const snapped = snapTrimEdgeFrame(trim.trackId, trim.clipId, proposedEnd);
-    const minEnd = getClipEnd(trim.origin) + minDelta;
-    const maxEnd = getClipEnd(trim.origin) + maxDelta;
-    const finalEnd = clamp(snapped.frame, minEnd, maxEnd);
+    const delta = clamp(deltaTime, minDelta, maxDelta);
+    const proposedEnd = trim.origin.end + delta;
+    const snapped = snapTrimEdgeTime(trim.rowId, trim.actionId, proposedEnd);
+    const minEnd = trim.origin.end + minDelta;
+    const maxEnd = trim.origin.end + maxDelta;
+    const finalEnd = clamp(snapped.time, minEnd, maxEnd);
     setTrim((prev) =>
       prev
         ? {
             ...prev,
             preview: {
               ...prev.origin,
-              duration: finalEnd - prev.origin.startFrame,
+              end: finalEnd,
+              outPoint: (prev.origin.outPoint ?? prev.origin.inPoint ?? 0) + (finalEnd - prev.origin.end),
             },
-            snappedFrame: finalEnd === snapped.frame ? snapped.snappedFrame : null,
+            snappedTime: finalEnd === snapped.time ? snapped.snappedTime : null,
           }
         : prev,
     );
@@ -911,14 +906,14 @@ export const Timeline: React.FC<TimelineProps> = ({
 
   const onTrimPointerUp = (event: PointerEvent<HTMLDivElement>) => {
     if (!trim || trim.pointerId !== event.pointerId) return;
-    const next = tracks.map((track) => {
-      if (track.id !== trim.trackId) return track;
+    const next = editorData.map((row) => {
+      if (row.id !== trim.rowId) return row;
       return {
-        ...track,
-        clips: track.clips.map((clip) => (clip.id === trim.clipId ? trim.preview : clip)),
+        ...row,
+        actions: row.actions.map((action) => (action.id === trim.actionId ? trim.preview : action)),
       };
     });
-    onTracksChange?.(next);
+    onEditorDataChange?.(next);
     setTrim(null);
   };
 
@@ -934,15 +929,15 @@ export const Timeline: React.FC<TimelineProps> = ({
     [controlledZoom, maxZoom, minZoom, onZoomChange],
   );
 
-  const zoomAroundFrame = useCallback(
-    (targetFrame: number, nextZoom: number, focusClientX?: number) => {
+  const zoomAroundTime = useCallback(
+    (targetTime: number, nextZoom: number, focusClientX?: number) => {
       const scrollEl = scrollRef.current;
       if (!scrollEl) return;
       const rect = scrollEl.getBoundingClientRect();
       const clampedZoom = setZoomValue(nextZoom);
       if (clampedZoom === zoom) return;
       const clientX = focusClientX ?? rect.left + rect.width / 2;
-      const nextAnchorX = frameToPixel(targetFrame, clampedZoom);
+      const nextAnchorX = timeToPixel(targetTime, clampedZoom);
       const nextScrollLeft = nextAnchorX - (clientX - rect.left);
       requestAnimationFrame(() => {
         scrollEl.scrollLeft = Math.max(0, nextScrollLeft);
@@ -959,30 +954,30 @@ export const Timeline: React.FC<TimelineProps> = ({
     if (!scrollEl) return;
     const rect = scrollEl.getBoundingClientRect();
     const anchorX = event.clientX - rect.left + scrollEl.scrollLeft;
-    const anchorFrame = pixelToFrame(anchorX, zoom);
+    const anchorTime = pixelToTime(anchorX, zoom);
     const factor = event.deltaY > 0 ? 0.9 : 1.1;
-    zoomAroundFrame(anchorFrame, zoom * factor, event.clientX);
+    zoomAroundTime(anchorTime, zoom * factor, event.clientX);
   };
 
-  const frameFromClientX = useCallback(
+  const timeFromClientX = useCallback(
     (clientX: number) => {
       const scrollEl = scrollRef.current;
       if (!scrollEl) return 0;
       const rect = scrollEl.getBoundingClientRect();
       const contentX = clientX - rect.left + scrollEl.scrollLeft;
-      return clamp(Math.round(pixelToFrame(contentX, zoom)), 0, totalFrames);
+      return clamp(pixelToTime(contentX, zoom), 0, duration);
     },
-    [totalFrames, zoom],
+    [duration, zoom],
   );
 
   const seekToClientX = useCallback(
     (clientX: number) => {
-      const frame = frameFromClientX(clientX);
-      currentFrameRef.current = frame;
-      updatePlayheadPosition(frame);
-      onFrameChange?.(frame);
+      const time = timeFromClientX(clientX);
+      currentTimeRef.current = time;
+      updatePlayheadPosition(time);
+      onTimeChange?.(time);
     },
-    [frameFromClientX, onFrameChange, updatePlayheadPosition],
+    [onTimeChange, timeFromClientX, updatePlayheadPosition],
   );
 
   const onPlayheadPointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -1021,11 +1016,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         trimSelectedClipRightToPlayhead();
       }
     },
-    [
-      splitSelectedClipAtPlayhead,
-      trimSelectedClipLeftToPlayhead,
-      trimSelectedClipRightToPlayhead,
-    ],
+    [splitSelectedClipAtPlayhead, trimSelectedClipLeftToPlayhead, trimSelectedClipRightToPlayhead],
   );
 
   return (
@@ -1044,11 +1035,11 @@ export const Timeline: React.FC<TimelineProps> = ({
         ref={rulerCanvasRef}
         onPointerDown={(event) => {
           event.preventDefault();
-          onRulerPointerDown?.(frameFromClientX(event.clientX), event);
+          onRulerPointerDown?.(timeFromClientX(event.clientX), event);
         }}
         onDoubleClick={(event) => {
           event.preventDefault();
-          onRulerDoubleClick?.(frameFromClientX(event.clientX), event);
+          onRulerDoubleClick?.(timeFromClientX(event.clientX), event);
         }}
         className="timeline-ruler-canvas"
       />
@@ -1076,50 +1067,50 @@ export const Timeline: React.FC<TimelineProps> = ({
           const target = event.target as HTMLElement;
           if (!target.closest("[data-clip-id]")) {
             setSelection(null);
-            onBlankAreaPointerDown?.(frameFromClientX(event.clientX), event);
+            onBlankAreaPointerDown?.(timeFromClientX(event.clientX), event);
           }
         }}
         onDoubleClickCapture={(event) => {
           const target = event.target as HTMLElement;
           if (!target.closest("[data-clip-id]")) {
-            onBlankAreaDoubleClick?.(frameFromClientX(event.clientX), event);
+            onBlankAreaDoubleClick?.(timeFromClientX(event.clientX), event);
           }
         }}
       >
         <div className="timeline-content" style={{ width: totalContentWidth, height: totalHeight }}>
-          {visibleTracks.map((track) => (
-            <React.Fragment key={track.id}>
-              {track.clips.map((clip) => {
-                const isDraggedSource = drag?.originTrackId === track.id && drag.clipId === clip.id;
-                const isTrimmedClip = trim?.trackId === track.id && trim.clipId === clip.id;
-                const isSelected = selection?.trackId === track.id && selection.clipId === clip.id;
-                const renderClip = isTrimmedClip ? trim.preview : clip;
-                const left = frameToPixel(renderClip.startFrame, zoom);
-                const width = Math.max(2, frameToPixel(renderClip.duration, zoom));
-                const layout = trackLayoutMap.get(track.id);
+          {visibleTracks.map((row) => (
+            <React.Fragment key={row.id}>
+              {row.actions.map((action) => {
+                const isDraggedSource = drag?.originRowId === row.id && drag.actionId === action.id;
+                const isTrimmedClip = trim?.rowId === row.id && trim.actionId === action.id;
+                const isSelected = selection?.rowId === row.id && selection.actionId === action.id;
+                const renderAction = isTrimmedClip ? trim.preview : action;
+                const left = timeToPixel(renderAction.start, zoom);
+                const width = Math.max(2, timeToPixel(getActionDuration(renderAction), zoom));
+                const layout = trackLayoutMap.get(row.id);
                 if (!layout) return null;
                 const top = layout.top;
-                const clipHeight = Math.max(14, layout.height);
+                const actionHeight = Math.max(14, layout.height);
 
                 return (
                   <ClipItem
-                    key={clip.id}
-                    clip={clip}
-                    renderClip={renderClip}
+                    key={action.id}
+                    clip={action}
+                    renderClip={renderAction}
                     left={left}
                     top={top}
                     width={width}
-                    height={clipHeight}
+                    height={actionHeight}
                     isSelected={isSelected}
                     isDraggedSource={isDraggedSource}
-                    onPointerDown={(event) => onClipPointerDown(event, track.id, clip)}
+                    onPointerDown={(event) => onClipPointerDown(event, row.id, action)}
                     onPointerMove={onClipPointerMove}
                     onPointerUp={onClipPointerUp}
                     onClick={(event) => {
                       event.stopPropagation();
-                      setSelection({ trackId: track.id, clipId: clip.id });
+                      setSelection({ rowId: row.id, actionId: action.id });
                     }}
-                    onTrimPointerDown={(event, side) => onTrimPointerDown(event, track.id, clip, side)}
+                    onTrimPointerDown={(event, side) => onTrimPointerDown(event, row.id, action, side)}
                     onTrimPointerMove={onTrimPointerMove}
                     onTrimPointerUp={onTrimPointerUp}
                   />
@@ -1130,11 +1121,11 @@ export const Timeline: React.FC<TimelineProps> = ({
 
           {drag && (
             <DragPreview
-              clip={drag.clip}
-              left={frameToPixel(drag.previewStartFrame, zoom)}
-              top={trackLayoutMap.get(drag.previewTrackId)?.top ?? RULER_HEIGHT}
-              width={Math.max(2, frameToPixel(drag.clip.duration, zoom))}
-              height={Math.max(14, trackLayoutMap.get(drag.previewTrackId)?.height ?? rowHeight)}
+              clip={drag.action}
+              left={timeToPixel(drag.previewStart, zoom)}
+              top={trackLayoutMap.get(drag.previewRowId)?.top ?? RULER_HEIGHT}
+              width={Math.max(2, timeToPixel(getActionDuration(drag.action), zoom))}
+              height={Math.max(14, trackLayoutMap.get(drag.previewRowId)?.height ?? rowHeight)}
               isDropValid={drag.isDropValid}
               onPointerMove={onClipPointerMove}
               onPointerUp={onClipPointerUp}
@@ -1148,17 +1139,17 @@ export const Timeline: React.FC<TimelineProps> = ({
             />
           )}
 
-          {drag?.snappedFrame != null && (
+          {drag?.snappedTime != null && (
             <div
               className="timeline-snap-line"
-              style={{ transform: `translateX(${frameToPixel(drag.snappedFrame, zoom)}px)` }}
+              style={{ transform: `translateX(${timeToPixel(drag.snappedTime, zoom)}px)` }}
             />
           )}
 
-          {trim?.snappedFrame != null && (
+          {trim?.snappedTime != null && (
             <div
               className="timeline-snap-line"
-              style={{ transform: `translateX(${frameToPixel(trim.snappedFrame, zoom)}px)` }}
+              style={{ transform: `translateX(${timeToPixel(trim.snappedTime, zoom)}px)` }}
             />
           )}
         </div>

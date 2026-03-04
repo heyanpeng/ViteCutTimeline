@@ -1,11 +1,11 @@
 import React, { PointerEvent } from "react";
-import type { Clip } from "./types";
+import type { TimelineAction } from "./types";
 import { getClipColor, getClipIcon, getClipLabel } from "./utils";
 import "./ClipItem.css";
 
 type ClipItemProps = {
-  clip: Clip;
-  renderClip: Clip;
+  clip: TimelineAction;
+  renderClip: TimelineAction;
   left: number;
   top: number;
   width: number;
@@ -72,13 +72,9 @@ export const ClipItem: React.FC<ClipItemProps> = ({
         onPointerMove={onTrimPointerMove}
         onPointerUp={onTrimPointerUp}
       />
-      <div className="clip-item-icon">
-        {getClipIcon(renderClip)}
-      </div>
+      <div className="clip-item-icon">{getClipIcon(renderClip)}</div>
       <div className="clip-item-content">
-        <div className="clip-item-label">
-          {getClipLabel(renderClip)}
-        </div>
+        <div className="clip-item-label">{getClipLabel(renderClip)}</div>
       </div>
     </div>
   );

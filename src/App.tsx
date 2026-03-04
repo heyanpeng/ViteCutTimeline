@@ -1,16 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
 import { Timeline } from "./timeline/Timeline";
-import type { Track } from "./timeline/model";
+import type { TimelineAction, TimelineRow } from "./timeline/model";
+import { formatTimeWithMs } from "./timeline/utils";
 import "./App.css";
 
-const FPS = 30;
-const TOTAL_FRAMES = 30 * 120;
+const DURATION = 120;
 const GITHUB_URL = "https://github.com/heyanpeng/ViteCutTimeline";
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 8;
 const TRACK_GAP = 6;
 const TRACK_HEIGHT_PRESETS = {
-  main: 60,
+  main: 70,
   video: 50,
   audio: 50,
   image: 40,
@@ -18,251 +18,40 @@ const TRACK_HEIGHT_PRESETS = {
   solid: 40,
 };
 
-const createDemoTracks = (): Track[] => [
+const a = (data: TimelineAction): TimelineAction => data;
+
+const createDemoRows = (): TimelineRow[] => [
   {
-    id: "overlay-text",
-    name: "Text",
+    id: "text-1",
+    name: "Text A",
     role: "normal",
     height: 40,
-    clips: [
-      {
-        id: "txt-1",
-        startFrame: 12,
-        displayStart: 0,
-        duration: 96,
-        layer: 0,
-        kind: "text",
-        title: "Open Title",
-        icon: "𝑇",
-        color: "#6f58d9",
-      },
-      {
-        id: "txt-2",
-        startFrame: 180,
-        displayStart: 0,
-        duration: 130,
-        layer: 0,
-        kind: "text",
-        title: "Subtitle",
-        icon: "𝑇",
-        color: "#5b4bc2",
-      },
-      {
-        id: "txt-3",
-        startFrame: 3300,
-        displayStart: 0,
-        duration: 220,
-        layer: 0,
-        kind: "text",
-        title: "Ending Credits",
-        icon: "𝑇",
-        color: "#4f46b8",
-      },
+    actions: [
+      a({ id: "txt-1", effectId: "text", start: 0.4, end: 3.8, kind: "text", title: "Open Title", icon: "𝑇", color: "#6f58d9" }),
+      a({ id: "txt-2", effectId: "text", start: 8.5, end: 12.4, kind: "text", title: "Subtitle", icon: "𝑇", color: "#5b4bc2" }),
+      a({ id: "txt-3", effectId: "text", start: 82.3, end: 91.8, kind: "text", title: "Ending Credits", icon: "𝑇", color: "#4f46b8" }),
     ],
   },
   {
-    id: "overlay-solid",
-    name: "Solid",
+    id: "solid-1",
+    name: "Solid A",
     role: "normal",
     height: 40,
-    clips: [
-      {
-        id: "solid-1",
-        startFrame: 320,
-        displayStart: 0,
-        duration: 90,
-        layer: 0,
-        kind: "solid",
-        title: "Flash",
-        icon: "●",
-        color: "#a64ac9",
-      },
-      {
-        id: "solid-2",
-        startFrame: 1200,
-        displayStart: 0,
-        duration: 180,
-        layer: 0,
-        kind: "solid",
-        title: "Mask BG",
-        icon: "●",
-        color: "#9b3fbf",
-      },
-      {
-        id: "solid-3",
-        startFrame: 3000,
-        displayStart: 0,
-        duration: 140,
-        layer: 0,
-        kind: "solid",
-        title: "Color Block",
-        icon: "●",
-        color: "#8f34b4",
-      },
+    actions: [
+      a({ id: "solid-1", effectId: "solid", start: 2.2, end: 5.2, kind: "solid", title: "Flash", icon: "●", color: "#a64ac9" }),
+      a({ id: "solid-2", effectId: "solid", start: 38.4, end: 44.1, kind: "solid", title: "Mask BG", icon: "●", color: "#9b3fbf" }),
+      a({ id: "solid-3", effectId: "solid", start: 92.6, end: 103.2, kind: "solid", title: "Color Block", icon: "●", color: "#8f34b4" }),
     ],
   },
   {
-    id: "overlay-text-2",
-    name: "Text 2",
+    id: "image-1",
+    name: "Image A",
     role: "normal",
     height: 40,
-    clips: [
-      {
-        id: "txt-4",
-        startFrame: 520,
-        displayStart: 0,
-        duration: 140,
-        layer: 0,
-        kind: "text",
-        title: "Caption A",
-        icon: "𝑇",
-        color: "#6a56cf",
-      },
-      {
-        id: "txt-5",
-        startFrame: 2040,
-        displayStart: 0,
-        duration: 180,
-        layer: 0,
-        kind: "text",
-        title: "Caption B",
-        icon: "𝑇",
-        color: "#5b4bc2",
-      },
-      {
-        id: "txt-6",
-        startFrame: 3460,
-        displayStart: 0,
-        duration: 120,
-        layer: 0,
-        kind: "text",
-        title: "End Tag",
-        icon: "𝑇",
-        color: "#5140b4",
-      },
-    ],
-  },
-  {
-    id: "overlay-image",
-    name: "Image",
-    role: "normal",
-    height: 40,
-    clips: [
-      {
-        id: "img-1",
-        startFrame: 420,
-        displayStart: 0,
-        duration: 150,
-        layer: 0,
-        kind: "image",
-        title: "Hero Image",
-        icon: "🖼",
-        color: "#3a7d44",
-      },
-      {
-        id: "img-2",
-        startFrame: 1600,
-        displayStart: 0,
-        duration: 220,
-        layer: 0,
-        kind: "image",
-        title: "Diagram",
-        icon: "🖼",
-        color: "#2f6f39",
-      },
-      {
-        id: "img-3",
-        startFrame: 3380,
-        displayStart: 0,
-        duration: 180,
-        layer: 0,
-        kind: "image",
-        title: "Outro Card",
-        icon: "🖼",
-        color: "#2a6333",
-      },
-    ],
-  },
-  {
-    id: "overlay-solid-2",
-    name: "Solid 2",
-    role: "normal",
-    height: 40,
-    clips: [
-      {
-        id: "solid-4",
-        startFrame: 90,
-        displayStart: 0,
-        duration: 80,
-        layer: 0,
-        kind: "solid",
-        title: "Blink",
-        icon: "●",
-        color: "#9e42c4",
-      },
-      {
-        id: "solid-5",
-        startFrame: 1480,
-        displayStart: 0,
-        duration: 200,
-        layer: 0,
-        kind: "solid",
-        title: "Shape BG",
-        icon: "●",
-        color: "#8d33af",
-      },
-      {
-        id: "solid-6",
-        startFrame: 3260,
-        displayStart: 0,
-        duration: 170,
-        layer: 0,
-        kind: "solid",
-        title: "Outro Mask",
-        icon: "●",
-        color: "#7e289f",
-      },
-    ],
-  },
-  {
-    id: "overlay-image-2",
-    name: "Image 2",
-    role: "normal",
-    height: 40,
-    clips: [
-      {
-        id: "img-4",
-        startFrame: 700,
-        displayStart: 0,
-        duration: 170,
-        layer: 0,
-        kind: "image",
-        title: "Slide 01",
-        icon: "🖼",
-        color: "#37793f",
-      },
-      {
-        id: "img-5",
-        startFrame: 2280,
-        displayStart: 0,
-        duration: 230,
-        layer: 0,
-        kind: "image",
-        title: "Slide 02",
-        icon: "🖼",
-        color: "#2f6b37",
-      },
-      {
-        id: "img-6",
-        startFrame: 3320,
-        displayStart: 0,
-        duration: 190,
-        layer: 0,
-        kind: "image",
-        title: "Slide 03",
-        icon: "🖼",
-        color: "#2a6132",
-      },
+    actions: [
+      a({ id: "img-1", effectId: "image", start: 12.5, end: 17.2, kind: "image", title: "Hero Image", icon: "🖼", color: "#3a7d44" }),
+      a({ id: "img-2", effectId: "image", start: 54.2, end: 61.4, kind: "image", title: "Diagram", icon: "🖼", color: "#2f6f39" }),
+      a({ id: "img-3", effectId: "image", start: 100.8, end: 108.7, kind: "image", title: "Outro Card", icon: "🖼", color: "#2a6333" }),
     ],
   },
   {
@@ -270,69 +59,10 @@ const createDemoTracks = (): Track[] => [
     name: "Video Upper A",
     role: "normal",
     height: 50,
-    clips: [
-      {
-        id: "vu-a-1",
-        startFrame: 80,
-        displayStart: 0,
-        duration: 90,
-        layer: 0,
-        kind: "video",
-        title: "B-roll 01",
-      },
-      {
-        id: "vu-a-2",
-        startFrame: 520,
-        displayStart: 48,
-        duration: 240,
-        layer: 0,
-        kind: "video",
-        title: "B-roll 02",
-      },
-      {
-        id: "vu-a-3",
-        startFrame: 980,
-        displayStart: 22,
-        duration: 260,
-        layer: 0,
-        kind: "video",
-        title: "B-roll 03",
-      },
-    ],
-  },
-  {
-    id: "video-upper-b",
-    name: "Video Upper B",
-    role: "normal",
-    height: 50,
-    clips: [
-      {
-        id: "vu-b-1",
-        startFrame: 1350,
-        displayStart: 10,
-        duration: 210,
-        layer: 0,
-        kind: "video",
-        title: "Cutaway 01",
-      },
-      {
-        id: "vu-b-2",
-        startFrame: 1880,
-        displayStart: 36,
-        duration: 280,
-        layer: 0,
-        kind: "video",
-        title: "Cutaway 02",
-      },
-      {
-        id: "vu-b-3",
-        startFrame: 3200,
-        displayStart: 4,
-        duration: 320,
-        layer: 0,
-        kind: "video",
-        title: "Outro Shot",
-      },
+    actions: [
+      a({ id: "vu-a-1", effectId: "video", start: 1.1, end: 4.2, inPoint: 0, outPoint: 3.1, kind: "video", title: "B-roll 01" }),
+      a({ id: "vu-a-2", effectId: "video", start: 17.3, end: 25.2, inPoint: 1.6, outPoint: 9.5, kind: "video", title: "B-roll 02" }),
+      a({ id: "vu-a-3", effectId: "video", start: 32.5, end: 41.2, inPoint: 0.7, outPoint: 9.4, kind: "video", title: "B-roll 03" }),
     ],
   },
   {
@@ -340,61 +70,13 @@ const createDemoTracks = (): Track[] => [
     name: "Video Main",
     role: "main",
     height: 70,
-    clips: [
-      {
-        id: "v1",
-        startFrame: 0,
-        displayStart: 0,
-        duration: 300,
-        layer: 0,
-        kind: "video",
-        title: "Main Video",
-      },
-      {
-        id: "v2",
-        startFrame: 340,
-        displayStart: 35,
-        duration: 420,
-        layer: 0,
-        kind: "video",
-        title: "A-Roll 02",
-      },
-      {
-        id: "v3",
-        startFrame: 790,
-        displayStart: 12,
-        duration: 360,
-        layer: 0,
-        kind: "video",
-        title: "A-Roll 03",
-      },
-      {
-        id: "v4",
-        startFrame: 1180,
-        displayStart: 20,
-        duration: 520,
-        layer: 0,
-        kind: "video",
-        title: "A-Roll 04",
-      },
-      {
-        id: "v5",
-        startFrame: 1760,
-        displayStart: 60,
-        duration: 740,
-        layer: 0,
-        kind: "video",
-        title: "A-Roll 05",
-      },
-      {
-        id: "v6",
-        startFrame: 2560,
-        displayStart: 30,
-        duration: 980,
-        layer: 0,
-        kind: "video",
-        title: "A-Roll 06",
-      },
+    actions: [
+      a({ id: "v1", effectId: "video", start: 0, end: 10.5, inPoint: 0, outPoint: 10.5, kind: "video", title: "Main Video 01" }),
+      a({ id: "v2", effectId: "video", start: 11.4, end: 26.2, inPoint: 1.2, outPoint: 16, kind: "video", title: "Main Video 02" }),
+      a({ id: "v3", effectId: "video", start: 27.1, end: 42.4, inPoint: 0.6, outPoint: 15.9, kind: "video", title: "Main Video 03" }),
+      a({ id: "v4", effectId: "video", start: 43.5, end: 61.1, inPoint: 2.2, outPoint: 19.8, kind: "video", title: "Main Video 04" }),
+      a({ id: "v5", effectId: "video", start: 62.2, end: 82.3, inPoint: 3, outPoint: 23.1, kind: "video", title: "Main Video 05" }),
+      a({ id: "v6", effectId: "video", start: 83.1, end: 111.8, inPoint: 1.5, outPoint: 30.2, kind: "video", title: "Main Video 06" }),
     ],
   },
   {
@@ -402,34 +84,10 @@ const createDemoTracks = (): Track[] => [
     name: "Audio VO",
     role: "audio",
     height: 50,
-    clips: [
-      {
-        id: "a-vo-1",
-        startFrame: 0,
-        displayStart: 0,
-        duration: 900,
-        layer: 0,
-        kind: "audio",
-        title: "Voice Over",
-      },
-      {
-        id: "a-vo-2",
-        startFrame: 980,
-        displayStart: 0,
-        duration: 700,
-        layer: 0,
-        kind: "audio",
-        title: "Voice Over 02",
-      },
-      {
-        id: "a-vo-3",
-        startFrame: 1760,
-        displayStart: 0,
-        duration: 1200,
-        layer: 0,
-        kind: "audio",
-        title: "Voice Over 03",
-      },
+    actions: [
+      a({ id: "a-vo-1", effectId: "audio", start: 0, end: 29.5, inPoint: 0, outPoint: 29.5, kind: "audio", title: "Voice Over 01" }),
+      a({ id: "a-vo-2", effectId: "audio", start: 31.1, end: 54.9, inPoint: 0.5, outPoint: 24.3, kind: "audio", title: "Voice Over 02" }),
+      a({ id: "a-vo-3", effectId: "audio", start: 58, end: 101.2, inPoint: 1.1, outPoint: 44.3, kind: "audio", title: "Voice Over 03" }),
     ],
   },
   {
@@ -437,66 +95,37 @@ const createDemoTracks = (): Track[] => [
     name: "Audio Music",
     role: "audio",
     height: 50,
-    clips: [
-      {
-        id: "a-bg-1",
-        startFrame: 0,
-        displayStart: 0,
-        duration: 1500,
-        layer: 0,
-        kind: "audio",
-        title: "BGM",
-      },
-      {
-        id: "a-bg-2",
-        startFrame: 1520,
-        displayStart: 0,
-        duration: 1120,
-        layer: 0,
-        kind: "audio",
-        title: "BGM 02",
-      },
-      {
-        id: "a-bg-3",
-        startFrame: 2680,
-        displayStart: 0,
-        duration: 840,
-        layer: 0,
-        kind: "audio",
-        title: "BGM 03",
-      },
+    actions: [
+      a({ id: "a-bg-1", effectId: "audio", start: 0, end: 50.2, inPoint: 0, outPoint: 50.2, kind: "audio", title: "BGM 01" }),
+      a({ id: "a-bg-2", effectId: "audio", start: 50.6, end: 86.4, inPoint: 0.3, outPoint: 36.1, kind: "audio", title: "BGM 02" }),
+      a({ id: "a-bg-3", effectId: "audio", start: 86.8, end: 114.2, inPoint: 0.2, outPoint: 27.6, kind: "audio", title: "BGM 03" }),
     ],
   },
 ];
 
 export default function App() {
-  const [tracks, setTracks] = useState<Track[]>(() => createDemoTracks());
+  const [editorData, setEditorData] = useState<TimelineRow[]>(() => createDemoRows());
   const [playing, setPlaying] = useState(false);
-  const [frame, setFrame] = useState(0);
+  const [time, setTime] = useState(0);
   const [showMinorTicks, setShowMinorTicks] = useState(false);
   const [showHorizontalLines, setShowHorizontalLines] = useState(true);
-  const [playEndBehavior, setPlayEndBehavior] = useState<"stop" | "loop">(
-    "stop",
-  );
+  const [playEndBehavior, setPlayEndBehavior] = useState<"stop" | "loop">("stop");
   const [dragSnapToClipEdges, setDragSnapToClipEdges] = useState(true);
   const [trimSnapToTimelineTicks, setTrimSnapToTimelineTicks] = useState(false);
   const [trimSnapToClipEdges, setTrimSnapToClipEdges] = useState(false);
   const [zoom, setZoom] = useState(1);
 
-  const currentTime = useMemo(() => (frame / FPS).toFixed(2), [frame]);
-  const onBlankAreaPointerDown = useCallback((nextFrame: number) => {
-    setFrame(nextFrame);
+  const currentTime = useMemo(() => formatTimeWithMs(time), [time]);
+  const onBlankAreaPointerDown = useCallback((nextTime: number) => {
+    setTime(nextTime);
   }, []);
-  const handleSeekFromRulerPointerDown = useCallback((nextFrame: number) => {
-    setFrame(nextFrame);
+  const handleSeekFromRulerPointerDown = useCallback((nextTime: number) => {
+    setTime(nextTime);
   }, []);
-  const handleSeekFromRulerDoubleClick = useCallback((nextFrame: number) => {
-    setFrame(nextFrame);
+  const handleSeekFromRulerDoubleClick = useCallback((nextTime: number) => {
+    setTime(nextTime);
   }, []);
-  const frameProgress = useMemo(
-    () => ((frame / TOTAL_FRAMES) * 100).toFixed(1),
-    [frame],
-  );
+  const timeProgress = useMemo(() => ((time / DURATION) * 100).toFixed(1), [time]);
   const zoomPercent = useMemo(() => `${Math.round(zoom * 100)}%`, [zoom]);
 
   return (
@@ -517,8 +146,7 @@ export default function App() {
           </a>
         </div>
         <p className="demo-subtitle">
-          Hybrid Canvas + DOM timeline with drag, trim, snapping and
-          virtualization.
+          Hybrid Canvas + DOM timeline with drag, trim, snapping and virtualization.
         </p>
       </header>
 
@@ -534,14 +162,13 @@ export default function App() {
           <button
             type="button"
             className="ghost-btn"
-            onClick={() => setFrame(0)}
+            onClick={() => setTime(0)}
           >
             Jump To Start
           </button>
           <div className="meta-group">
-            <span className="meta-item">Frame {frame}</span>
-            <span className="meta-item">Time {currentTime}s</span>
-            <span className="meta-item">Progress {frameProgress}%</span>
+            <span className="meta-item">Time {currentTime}</span>
+            <span className="meta-item">Progress {timeProgress}%</span>
           </div>
         </div>
 
@@ -644,12 +271,11 @@ export default function App() {
 
       <section className="stage">
         <Timeline
-          tracks={tracks}
-          fps={FPS}
-          totalFrames={TOTAL_FRAMES}
+          editorData={editorData}
+          duration={DURATION}
           playing={playing}
           playEndBehavior={playEndBehavior}
-          currentFrame={frame}
+          currentTime={time}
           showMinorTicks={showMinorTicks}
           showHorizontalLines={showHorizontalLines}
           trimSnapToTimelineTicks={trimSnapToTimelineTicks}
@@ -660,8 +286,8 @@ export default function App() {
           zoom={zoom}
           trackGap={TRACK_GAP}
           trackHeightPresets={TRACK_HEIGHT_PRESETS}
-          onTracksChange={setTracks}
-          onFrameChange={setFrame}
+          onEditorDataChange={setEditorData}
+          onTimeChange={setTime}
           onPlayingChange={setPlaying}
           onZoomChange={setZoom}
           onRulerPointerDown={handleSeekFromRulerPointerDown}
@@ -674,12 +300,11 @@ export default function App() {
         <h2>Usage</h2>
         <pre>
           {`<Timeline
-  tracks={tracks}
-  fps={30}
-  totalFrames={3600}
+  editorData={rows}
+  duration={120}
   playing={playing}
-  currentFrame={frame}
-  onFrameChange={setFrame}
+  currentTime={time}
+  onTimeChange={setTime}
 />`}
         </pre>
       </section>

@@ -3,24 +3,39 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from "react";
 
-export interface Clip {
+export type ClipKind = "text" | "solid" | "image" | "video" | "audio";
+
+export interface TimelineAction {
   id: string;
-  startFrame: number;
-  displayStart: number;
-  duration: number;
-  layer: number;
+  start: number;
+  end: number;
+  effectId: string;
+  selected?: boolean;
+  flexible?: boolean;
+  movable?: boolean;
+  disable?: boolean;
+  minStart?: number;
+  maxEnd?: number;
+
+  layer?: number;
   title?: string;
   icon?: string;
-  kind?: "text" | "solid" | "image" | "video" | "audio";
+  kind?: ClipKind;
   color?: string;
+  inPoint?: number;
+  outPoint?: number;
 }
 
-export interface Track {
+export interface TimelineRow {
   id: string;
+  actions: TimelineAction[];
+  rowHeight?: number;
+  selected?: boolean;
+  classNames?: string[];
+
   name?: string;
   role?: "main" | "audio" | "normal";
   height?: number;
-  clips: Clip[];
 }
 
 export type TrackHeightPresets = {
@@ -34,12 +49,11 @@ export type TrackHeightPresets = {
 };
 
 export type TimelineProps = {
-  tracks: Track[];
-  fps: number;
-  totalFrames: number;
+  editorData: TimelineRow[];
+  duration: number;
   playing: boolean;
   playEndBehavior?: "stop" | "loop";
-  currentFrame?: number;
+  currentTime?: number;
   showMinorTicks?: boolean;
   showHorizontalLines?: boolean;
   dragSnapToClipEdges?: boolean;
@@ -47,61 +61,61 @@ export type TimelineProps = {
   trimSnapToTimelineTicks?: boolean;
   trimSnapThresholdPx?: number;
   trimSnapTickMode?: "minor" | "major";
-  initialFrame?: number;
+  initialTime?: number;
   minZoom?: number;
   maxZoom?: number;
   zoom?: number;
   rowHeight?: number;
   trackGap?: number;
   trackHeightPresets?: TrackHeightPresets;
-  onTracksChange?: (next: Track[]) => void;
-  onFrameChange?: (frame: number) => void;
+  onEditorDataChange?: (next: TimelineRow[]) => void;
+  onTimeChange?: (time: number) => void;
   onPlayingChange?: (playing: boolean) => void;
   onZoomChange?: (zoom: number) => void;
-  onRulerPointerDown?: (frame: number, event: ReactPointerEvent<HTMLCanvasElement>) => void;
-  onBlankAreaPointerDown?: (frame: number, event: ReactPointerEvent<HTMLDivElement>) => void;
-  onRulerDoubleClick?: (frame: number, event: ReactMouseEvent<HTMLCanvasElement>) => void;
-  onBlankAreaDoubleClick?: (frame: number, event: ReactMouseEvent<HTMLDivElement>) => void;
+  onRulerPointerDown?: (time: number, event: ReactPointerEvent<HTMLCanvasElement>) => void;
+  onBlankAreaPointerDown?: (time: number, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onRulerDoubleClick?: (time: number, event: ReactMouseEvent<HTMLCanvasElement>) => void;
+  onBlankAreaDoubleClick?: (time: number, event: ReactMouseEvent<HTMLDivElement>) => void;
 };
 
 export type DragState = {
-  originTrackId: string;
-  previewTrackId: string;
-  insertTrackIndex: number | null;
+  originRowId: string;
+  previewRowId: string;
+  insertRowIndex: number | null;
   insertLineY: number | null;
-  clipId: string;
-  clip: Clip;
+  actionId: string;
+  action: TimelineAction;
   pointerId: number;
   startClientX: number;
-  originFrame: number;
-  previewStartFrame: number;
-  commitStartFrame: number | null;
-  snappedFrame: number | null;
+  originStart: number;
+  previewStart: number;
+  commitStart: number | null;
+  snappedTime: number | null;
   isDropValid: boolean;
 };
 
 export type PendingDragState = {
-  trackId: string;
-  clip: Clip;
+  rowId: string;
+  action: TimelineAction;
   pointerId: number;
   startClientX: number;
   startClientY: number;
 };
 
 export type TrimState = {
-  trackId: string;
-  clipId: string;
+  rowId: string;
+  actionId: string;
   side: "left" | "right";
   pointerId: number;
   startClientX: number;
-  origin: Clip;
-  preview: Clip;
-  snappedFrame: number | null;
+  origin: TimelineAction;
+  preview: TimelineAction;
+  snappedTime: number | null;
 };
 
 export type Selection = {
-  trackId: string;
-  clipId: string;
+  rowId: string;
+  actionId: string;
 } | null;
 
 export type TrackLayout = {

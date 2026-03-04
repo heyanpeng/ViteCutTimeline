@@ -1,5 +1,5 @@
 import { RULER_HEIGHT } from "./constants";
-import { clamp, formatTime, frameToPixel, getTickStepFrames, pixelToFrame } from "./utils";
+import { clamp, formatTime, getTickStepSeconds, pixelToTime, timeToPixel } from "./utils";
 import type { TrackLayout } from "./types";
 
 type CommonDraw = {
@@ -9,8 +9,7 @@ type CommonDraw = {
   scrollLeft: number;
   scrollTop: number;
   zoom: number;
-  fps: number;
-  totalFrames: number;
+  duration: number;
   showMinorTicks: boolean;
 };
 
@@ -21,8 +20,7 @@ export const drawTimelineCanvas = ({
   scrollLeft,
   scrollTop,
   zoom,
-  fps,
-  totalFrames,
+  duration,
   showMinorTicks,
   showHorizontalLines,
   trackLayouts,
@@ -45,10 +43,6 @@ export const drawTimelineCanvas = ({
 
   ctx.fillStyle = "#0f1115";
   ctx.fillRect(0, 0, width, height);
-  const pxPerFrame = frameToPixel(1, zoom);
-  const tick = getTickStepFrames(pxPerFrame, fps);
-  const startFrame = Math.max(0, Math.floor(pixelToFrame(scrollLeft, zoom)));
-  const endFrame = Math.min(totalFrames, Math.ceil(pixelToFrame(scrollLeft + width, zoom)));
 
   if (showHorizontalLines) {
     ctx.strokeStyle = "#1c2028";
@@ -65,10 +59,16 @@ export const drawTimelineCanvas = ({
     }
   }
 
-  const firstMinor = Math.floor(startFrame / tick.minor) * tick.minor;
-  for (let frame = firstMinor; frame <= endFrame; frame += tick.minor) {
-    const x = frameToPixel(frame, zoom) - scrollLeft;
-    const isMajor = frame % tick.major === 0;
+  const pxPerSecond = timeToPixel(1, zoom);
+  const tick = getTickStepSeconds(pxPerSecond);
+  const startTime = Math.max(0, pixelToTime(scrollLeft, zoom));
+  const endTime = Math.min(duration, pixelToTime(scrollLeft + width, zoom));
+  const firstMinor = Math.floor(startTime / tick.minor) * tick.minor;
+
+  for (let t = firstMinor; t <= endTime; t += tick.minor) {
+    const x = timeToPixel(t, zoom) - scrollLeft;
+    const q = Math.round((t / tick.major) * 1000) / 1000;
+    const isMajor = Math.abs(q - Math.round(q)) < 1e-6;
     if (!showMinorTicks && !isMajor) continue;
     ctx.strokeStyle = isMajor ? "#384254" : "#232936";
     ctx.beginPath();
@@ -84,8 +84,7 @@ export const drawRulerCanvas = ({
   scrollLeft,
   scrollTop: _scrollTop,
   zoom,
-  fps,
-  totalFrames,
+  duration,
   showMinorTicks,
 }: CommonDraw) => {
   const ctx = canvas.getContext("2d");
@@ -109,16 +108,17 @@ export const drawRulerCanvas = ({
   ctx.lineTo(width, height - 0.5);
   ctx.stroke();
 
-  const pxPerFrame = frameToPixel(1, zoom);
-  const tick = getTickStepFrames(pxPerFrame, fps);
-  const startFrame = Math.max(0, Math.floor(pixelToFrame(scrollLeft, zoom)));
-  const endFrame = Math.min(totalFrames, Math.ceil(pixelToFrame(scrollLeft + width, zoom)));
-  const firstMinor = Math.floor(startFrame / tick.minor) * tick.minor;
-  const majorFrames: number[] = [];
+  const pxPerSecond = timeToPixel(1, zoom);
+  const tick = getTickStepSeconds(pxPerSecond);
+  const startTime = Math.max(0, pixelToTime(scrollLeft, zoom));
+  const endTime = Math.min(duration, pixelToTime(scrollLeft + width, zoom));
+  const firstMinor = Math.floor(startTime / tick.minor) * tick.minor;
+  const majorTimes: number[] = [];
 
-  for (let frame = firstMinor; frame <= endFrame; frame += tick.minor) {
-    const x = frameToPixel(frame, zoom) - scrollLeft;
-    const isMajor = frame % tick.major === 0;
+  for (let t = firstMinor; t <= endTime; t += tick.minor) {
+    const x = timeToPixel(t, zoom) - scrollLeft;
+    const q = Math.round((t / tick.major) * 1000) / 1000;
+    const isMajor = Math.abs(q - Math.round(q)) < 1e-6;
     if (!showMinorTicks && !isMajor) continue;
     const tickTop = isMajor ? height - 12 : height - 7;
     ctx.strokeStyle = isMajor ? "#7182a1" : "#4a5b77";
@@ -126,18 +126,19 @@ export const drawRulerCanvas = ({
     ctx.moveTo(x + 0.5, tickTop);
     ctx.lineTo(x + 0.5, height);
     ctx.stroke();
-    if (isMajor) majorFrames.push(frame);
+    if (isMajor) majorTimes.push(t);
   }
 
   ctx.fillStyle = "#b4c0d4";
   ctx.font = "11px ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
-  for (const frame of majorFrames) {
-    const x = frameToPixel(frame, zoom) - scrollLeft;
-    const label = tick.unit === "second" ? formatTime(frame, fps) : `${frame}f`;
+  for (const t of majorTimes) {
+    const x = timeToPixel(t, zoom) - scrollLeft;
+    const label = formatTime(t);
+    if (label === "00:00" || label === "00:00:00") continue;
     const textWidth = ctx.measureText(label).width;
-    const textX = clamp(x + 4, 2, Math.max(2, width - textWidth - 2));
+    const textX = clamp(x - textWidth - 4, 2, Math.max(2, width - textWidth - 2));
     ctx.fillText(label, textX, 2);
   }
 };
