@@ -12,9 +12,33 @@ const createDemoTracks = (): Track[] => [
     name: "Video Main",
     height: 56,
     clips: [
-      { id: "v1", startFrame: 0, displayStart: 0, duration: 220, layer: 0, kind: "video", title: "Main Video" },
-      { id: "v2", startFrame: 250, displayStart: 35, duration: 260, layer: 0, kind: "video", title: "A-Roll 02" },
-      { id: "v3", startFrame: 560, displayStart: 12, duration: 210, layer: 0, kind: "video", title: "A-Roll 03" },
+      {
+        id: "v1",
+        startFrame: 0,
+        displayStart: 0,
+        duration: 220,
+        layer: 0,
+        kind: "video",
+        title: "Main Video",
+      },
+      {
+        id: "v2",
+        startFrame: 250,
+        displayStart: 35,
+        duration: 260,
+        layer: 0,
+        kind: "video",
+        title: "A-Roll 02",
+      },
+      {
+        id: "v3",
+        startFrame: 560,
+        displayStart: 12,
+        duration: 210,
+        layer: 0,
+        kind: "video",
+        title: "A-Roll 03",
+      },
     ],
   },
   {
@@ -22,9 +46,39 @@ const createDemoTracks = (): Track[] => [
     name: "Overlay",
     height: 50,
     clips: [
-      { id: "o1", startFrame: 30, displayStart: 0, duration: 150, layer: 0, kind: "text", title: "Title", icon: "𝑇", color: "#6f58d9" },
-      { id: "o2", startFrame: 220, displayStart: 0, duration: 120, layer: 0, kind: "solid", title: "Solid", icon: "●", color: "#a64ac9" },
-      { id: "o3", startFrame: 380, displayStart: 0, duration: 160, layer: 0, kind: "image", title: "Image", icon: "🖼", color: "#3a7d44" },
+      {
+        id: "o1",
+        startFrame: 30,
+        displayStart: 0,
+        duration: 150,
+        layer: 0,
+        kind: "text",
+        title: "Title",
+        icon: "𝑇",
+        color: "#6f58d9",
+      },
+      {
+        id: "o2",
+        startFrame: 220,
+        displayStart: 0,
+        duration: 120,
+        layer: 0,
+        kind: "solid",
+        title: "Solid",
+        icon: "●",
+        color: "#a64ac9",
+      },
+      {
+        id: "o3",
+        startFrame: 380,
+        displayStart: 0,
+        duration: 160,
+        layer: 0,
+        kind: "image",
+        title: "Image",
+        icon: "🖼",
+        color: "#3a7d44",
+      },
     ],
   },
   {
@@ -32,9 +86,33 @@ const createDemoTracks = (): Track[] => [
     name: "B-roll",
     height: 62,
     clips: [
-      { id: "b1", startFrame: 110, displayStart: 0, duration: 140, layer: 0, kind: "video", title: "B-roll 01" },
-      { id: "b2", startFrame: 430, displayStart: 48, duration: 180, layer: 0, kind: "video", title: "B-roll 02" },
-      { id: "b3", startFrame: 900, displayStart: 22, duration: 220, layer: 0, kind: "video", title: "B-roll 03" },
+      {
+        id: "b1",
+        startFrame: 110,
+        displayStart: 0,
+        duration: 140,
+        layer: 0,
+        kind: "video",
+        title: "B-roll 01",
+      },
+      {
+        id: "b2",
+        startFrame: 430,
+        displayStart: 48,
+        duration: 180,
+        layer: 0,
+        kind: "video",
+        title: "B-roll 02",
+      },
+      {
+        id: "b3",
+        startFrame: 900,
+        displayStart: 22,
+        duration: 220,
+        layer: 0,
+        kind: "video",
+        title: "B-roll 03",
+      },
     ],
   },
   {
@@ -42,8 +120,24 @@ const createDemoTracks = (): Track[] => [
     name: "Audio",
     height: 42,
     clips: [
-      { id: "a1", startFrame: 0, displayStart: 0, duration: 520, layer: 0, kind: "audio", title: "Voice Over" },
-      { id: "a2", startFrame: 540, displayStart: 0, duration: 460, layer: 0, kind: "audio", title: "BGM" },
+      {
+        id: "a1",
+        startFrame: 0,
+        displayStart: 0,
+        duration: 520,
+        layer: 0,
+        kind: "audio",
+        title: "Voice Over",
+      },
+      {
+        id: "a2",
+        startFrame: 540,
+        displayStart: 0,
+        duration: 460,
+        layer: 0,
+        kind: "audio",
+        title: "BGM",
+      },
     ],
   },
 ];
@@ -54,19 +148,27 @@ export default function App() {
   const [frame, setFrame] = useState(0);
   const [showMinorTicks, setShowMinorTicks] = useState(true);
   const [showHorizontalLines, setShowHorizontalLines] = useState(true);
-  const [playEndBehavior, setPlayEndBehavior] = useState<"stop" | "loop">("stop");
+  const [playEndBehavior, setPlayEndBehavior] = useState<"stop" | "loop">(
+    "stop",
+  );
   const [dragSnapToClipEdges, setDragSnapToClipEdges] = useState(true);
   const [trimSnapToTimelineTicks, setTrimSnapToTimelineTicks] = useState(true);
   const [trimSnapToClipEdges, setTrimSnapToClipEdges] = useState(true);
 
   const currentTime = useMemo(() => (frame / FPS).toFixed(2), [frame]);
-  const handleSeekFromBlank = useCallback((nextFrame: number) => {
+  const handleSeekFromBlankDoubleClick = useCallback((nextFrame: number) => {
     setFrame(nextFrame);
   }, []);
-  const handleSeekFromRuler = useCallback((nextFrame: number) => {
+  const handleSeekFromRulerPointerDown = useCallback((nextFrame: number) => {
     setFrame(nextFrame);
   }, []);
-  const frameProgress = useMemo(() => ((frame / TOTAL_FRAMES) * 100).toFixed(1), [frame]);
+  const handleSeekFromRulerDoubleClick = useCallback((nextFrame: number) => {
+    setFrame(nextFrame);
+  }, []);
+  const frameProgress = useMemo(
+    () => ((frame / TOTAL_FRAMES) * 100).toFixed(1),
+    [frame],
+  );
 
   return (
     <div className="demo-page">
@@ -76,21 +178,35 @@ export default function App() {
             <p className="demo-badge">Open Source Demo</p>
             <h1>Timeline Component Playground</h1>
           </div>
-          <a className="github-link" href={GITHUB_URL} target="_blank" rel="noreferrer">
+          <a
+            className="github-link"
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
             GitHub
           </a>
         </div>
         <p className="demo-subtitle">
-          Hybrid Canvas + DOM timeline with drag, trim, snapping and virtualization.
+          Hybrid Canvas + DOM timeline with drag, trim, snapping and
+          virtualization.
         </p>
       </header>
 
       <section className="panel">
         <div className="panel-row">
-          <button type="button" className="primary-btn" onClick={() => setPlaying((v) => !v)}>
+          <button
+            type="button"
+            className="primary-btn"
+            onClick={() => setPlaying((v) => !v)}
+          >
             {playing ? "Pause" : "Play"}
           </button>
-          <button type="button" className="ghost-btn" onClick={() => setFrame(0)}>
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={() => setFrame(0)}
+          >
             Jump To Start
           </button>
           <div className="meta-group">
@@ -107,7 +223,9 @@ export default function App() {
               <input
                 type="checkbox"
                 checked={playEndBehavior === "loop"}
-                onChange={(e) => setPlayEndBehavior(e.target.checked ? "loop" : "stop")}
+                onChange={(e) =>
+                  setPlayEndBehavior(e.target.checked ? "loop" : "stop")
+                }
               />
               Loop At Last Clip End
             </label>
@@ -183,15 +301,17 @@ export default function App() {
           trimSnapToClipEdges={trimSnapToClipEdges}
           onTracksChange={setTracks}
           onFrameChange={setFrame}
-          onBlankAreaPointerDown={handleSeekFromBlank}
-          onRulerPointerDown={handleSeekFromRuler}
+          onPlayingChange={setPlaying}
+          onRulerPointerDown={handleSeekFromRulerPointerDown}
+          onBlankAreaDoubleClick={handleSeekFromBlankDoubleClick}
+          onRulerDoubleClick={handleSeekFromRulerDoubleClick}
         />
       </section>
 
       <section className="snippet">
         <h2>Usage</h2>
         <pre>
-{`<Timeline
+          {`<Timeline
   tracks={tracks}
   fps={30}
   totalFrames={3600}

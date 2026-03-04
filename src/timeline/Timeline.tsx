@@ -60,8 +60,11 @@ export const Timeline: React.FC<TimelineProps> = ({
   rowHeight = 52,
   onTracksChange,
   onFrameChange,
+  onPlayingChange,
   onRulerPointerDown,
   onBlankAreaPointerDown,
+  onRulerDoubleClick,
+  onBlankAreaDoubleClick,
 }) => {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -260,6 +263,8 @@ export const Timeline: React.FC<TimelineProps> = ({
           updatePlayheadPosition(0);
           onFrameChange?.(0);
           rafRef.current = requestAnimationFrame(loop);
+        } else {
+          onPlayingChange?.(false);
         }
         return;
       }
@@ -272,7 +277,7 @@ export const Timeline: React.FC<TimelineProps> = ({
       rafRef.current = null;
       lastTime = 0;
     };
-  }, [fps, lastClipEndFrame, onFrameChange, playEndBehavior, playing, updatePlayheadPosition]);
+  }, [fps, lastClipEndFrame, onFrameChange, onPlayingChange, playEndBehavior, playing, updatePlayheadPosition]);
 
   const snapFrame = useCallback(
     (clipId: string, proposedStart: number, duration: number) => {
@@ -803,6 +808,10 @@ export const Timeline: React.FC<TimelineProps> = ({
           event.preventDefault();
           onRulerPointerDown?.(frameFromClientX(event.clientX), event);
         }}
+        onDoubleClick={(event) => {
+          event.preventDefault();
+          onRulerDoubleClick?.(frameFromClientX(event.clientX), event);
+        }}
         style={{
           position: "absolute",
           left: 0,
@@ -880,6 +889,12 @@ export const Timeline: React.FC<TimelineProps> = ({
           if (!target.closest("[data-clip-id]")) {
             setSelection(null);
             onBlankAreaPointerDown?.(frameFromClientX(event.clientX), event);
+          }
+        }}
+        onDoubleClickCapture={(event) => {
+          const target = event.target as HTMLElement;
+          if (!target.closest("[data-clip-id]")) {
+            onBlankAreaDoubleClick?.(frameFromClientX(event.clientX), event);
           }
         }}
       >

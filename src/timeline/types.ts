@@ -1,4 +1,7 @@
-import type { PointerEvent as ReactPointerEvent } from "react";
+import type {
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 
 export interface Clip {
   id: string;
@@ -39,8 +42,11 @@ export type TimelineProps = {
   rowHeight?: number;
   onTracksChange?: (next: Track[]) => void;
   onFrameChange?: (frame: number) => void;
+  onPlayingChange?: (playing: boolean) => void;
   onRulerPointerDown?: (frame: number, event: ReactPointerEvent<HTMLCanvasElement>) => void;
   onBlankAreaPointerDown?: (frame: number, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onRulerDoubleClick?: (frame: number, event: ReactMouseEvent<HTMLCanvasElement>) => void;
+  onBlankAreaDoubleClick?: (frame: number, event: ReactMouseEvent<HTMLDivElement>) => void;
 };
 
 export type DragState = {
