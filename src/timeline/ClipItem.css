@@ -22,6 +22,10 @@
   opacity: 0;
 }
 
+.clip-item-dimmed {
+  opacity: 0.42;
+}
+
 .clip-item-trim-handle {
   position: absolute;
   top: 0;

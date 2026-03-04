@@ -126,10 +126,9 @@ export const drawRulerCanvas = ({
     const x = timeToPixel(t, zoom) - scrollLeft;
     const isMajor = i % majorEvery === 0;
     if (!showMinorTicks && !isMajor) continue;
-    const tickTop = isMajor ? height - 12 : height - 7;
     ctx.strokeStyle = isMajor ? "#7182a1" : "#4a5b77";
     ctx.beginPath();
-    ctx.moveTo(x + 0.5, tickTop);
+    ctx.moveTo(x + 0.5, 0);
     ctx.lineTo(x + 0.5, height);
     ctx.stroke();
     if (isMajor) majorTimesMs.push(tMs);
@@ -143,9 +142,8 @@ export const drawRulerCanvas = ({
     const t = tMs / 1000;
     const x = timeToPixel(t, zoom) - scrollLeft;
     const label = formatTime(t);
-    if (label === "00:00" || label === "00:00:00") continue;
     const textWidth = ctx.measureText(label).width;
-    const textX = clamp(x - textWidth - 4, 2, Math.max(2, width - textWidth - 2));
+    const textX = clamp(x + 4, 2, Math.max(2, width - textWidth - 2));
     ctx.fillText(label, textX, 2);
   }
 };

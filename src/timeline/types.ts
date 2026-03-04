@@ -1,6 +1,7 @@
 import type {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
+  ReactNode,
 } from "react";
 
 export type ClipKind = "text" | "solid" | "image" | "video" | "audio";
@@ -68,6 +69,8 @@ export type TimelineProps = {
   rowHeight?: number;
   trackGap?: number;
   trackHeightPresets?: TrackHeightPresets;
+  trackControlsWidth?: number;
+  renderTrackControls?: (params: TrackControlRenderParams) => ReactNode;
   onEditorDataChange?: (next: TimelineRow[]) => void;
   onTimeChange?: (time: number) => void;
   onPlayingChange?: (playing: boolean) => void;
@@ -77,6 +80,26 @@ export type TimelineProps = {
   onRulerDoubleClick?: (time: number, event: ReactMouseEvent<HTMLCanvasElement>) => void;
   onBlankAreaDoubleClick?: (time: number, event: ReactMouseEvent<HTMLDivElement>) => void;
   onSelectionChange?: (selection: Selection) => void;
+};
+
+export type TrackControlState = {
+  locked: boolean;
+  hidden: boolean;
+  muted: boolean;
+};
+
+export type TrackControlActions = {
+  toggleLock: () => void;
+  toggleHide: () => void;
+  toggleMute: () => void;
+  deleteTrack: () => void;
+};
+
+export type TrackControlRenderParams = {
+  row: TimelineRow;
+  state: TrackControlState;
+  actions: TrackControlActions;
+  isMainTrack: boolean;
 };
 
 export type TimelineRef = {

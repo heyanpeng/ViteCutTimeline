@@ -12,6 +12,7 @@ type ClipItemProps = {
   height: number;
   isSelected: boolean;
   isDraggedSource: boolean;
+  isDimmed: boolean;
   onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
   onPointerMove: (event: PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
@@ -33,6 +34,7 @@ export const ClipItem: React.FC<ClipItemProps> = ({
   height,
   isSelected,
   isDraggedSource,
+  isDimmed,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -41,7 +43,7 @@ export const ClipItem: React.FC<ClipItemProps> = ({
   onTrimPointerMove,
   onTrimPointerUp,
 }) => {
-  const className = `clip-item${isSelected ? " clip-item-selected" : ""}${isDraggedSource ? " clip-item-dragging" : ""}`;
+  const className = `clip-item${isSelected ? " clip-item-selected" : ""}${isDraggedSource ? " clip-item-dragging" : ""}${isDimmed ? " clip-item-dimmed" : ""}`;
 
   return (
     <div

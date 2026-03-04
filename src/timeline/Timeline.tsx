@@ -26,6 +26,7 @@ import type {
   PendingDragState,
   Selection,
   TimelineAction,
+  TrackControlRenderParams,
   TimelineProps,
   TimelineRef,
   TimelineRow,
@@ -66,6 +67,8 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
   rowHeight = 52,
   trackGap = 0,
   trackHeightPresets,
+  trackControlsWidth = 184,
+  renderTrackControls,
   onEditorDataChange,
   onTimeChange,
   onPlayingChange,
@@ -95,6 +98,9 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
   const [pendingDrag, setPendingDrag] = useState<PendingDragState | null>(null);
   const [trim, setTrim] = useState<TrimState | null>(null);
   const [selection, setSelection] = useState<Selection>(null);
+  const [lockedRows, setLockedRows] = useState<Record<string, boolean>>({});
+  const [hiddenRows, setHiddenRows] = useState<Record<string, boolean>>({});
+  const [mutedRows, setMutedRows] = useState<Record<string, boolean>>({});
   const updateSelection = useCallback(
     (next: Selection) => {
       setSelection(next);
@@ -102,8 +108,30 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     },
     [onSelectionChange],
   );
+  const toggleRowLock = useCallback((rowId: string) => {
+    setLockedRows((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
+  }, []);
+  const toggleRowHide = useCallback((rowId: string) => {
+    setHiddenRows((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
+  }, []);
+  const toggleRowMute = useCallback((rowId: string) => {
+    setMutedRows((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
+  }, []);
+  const deleteTrackById = useCallback(
+    (rowId: string) => {
+      if (!onEditorDataChange) return;
+      const target = editorData.find((row) => row.id === rowId);
+      if (!target || target.role === "main") return;
+      onEditorDataChange(editorData.filter((row) => row.id !== rowId));
+      if (selection?.rowId === rowId) updateSelection(null);
+    },
+    [editorData, onEditorDataChange, selection?.rowId, updateSelection],
+  );
 
   const zoom = clamp(controlledZoom ?? uncontrolledZoom, minZoom, maxZoom);
+  const isRowLocked = useCallback((rowId: string) => Boolean(lockedRows[rowId]), [lockedRows]);
+  const isRowHidden = useCallback((rowId: string) => Boolean(hiddenRows[rowId]), [hiddenRows]);
+  const isRowMuted = useCallback((rowId: string) => Boolean(mutedRows[rowId]), [mutedRows]);
   const contentBounds = useMemo(() => {
     let minStart = Number.POSITIVE_INFINITY;
     let maxEnd = 0;
@@ -716,6 +744,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
   const onClipPointerDown = (event: PointerEvent<HTMLDivElement>, rowId: string, action: TimelineAction) => {
     if (event.button !== 0) return;
     if (trim) return;
+    if (isRowLocked(rowId)) return;
     event.preventDefault();
     (event.currentTarget as HTMLDivElement).setPointerCapture(event.pointerId);
     updateSelection({ rowId, actionId: action.id });
@@ -861,6 +890,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     side: "left" | "right",
   ) => {
     if (event.button !== 0) return;
+    if (isRowLocked(rowId)) return;
     event.preventDefault();
     event.stopPropagation();
     (event.currentTarget as HTMLDivElement).setPointerCapture(event.pointerId);
@@ -1100,6 +1130,80 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     [splitSelectedClipAtPlayhead, trimSelectedClipLeftToPlayhead, trimSelectedClipRightToPlayhead],
   );
 
+  const renderTrackControlContent = useCallback(
+    (row: TimelineRow) => {
+      const isMainTrack = row.role === "main";
+      const state = {
+        locked: isRowLocked(row.id),
+        hidden: isRowHidden(row.id),
+        muted: isRowMuted(row.id),
+      };
+      const actions = {
+        toggleLock: () => toggleRowLock(row.id),
+        toggleHide: () => toggleRowHide(row.id),
+        toggleMute: () => toggleRowMute(row.id),
+        deleteTrack: () => deleteTrackById(row.id),
+      };
+
+      if (renderTrackControls) {
+        return renderTrackControls({
+          row,
+          state,
+          actions,
+          isMainTrack,
+        } satisfies TrackControlRenderParams);
+      }
+
+      return (
+        <div className="timeline-track-controls">
+          <button
+            type="button"
+            className={`timeline-track-btn${state.locked ? " active" : ""}`}
+            onClick={actions.toggleLock}
+            title={state.locked ? "Unlock Track" : "Lock Track"}
+          >
+            {state.locked ? "🔒" : "🔓"}
+          </button>
+          <button
+            type="button"
+            className={`timeline-track-btn${state.hidden ? " active" : ""}`}
+            onClick={actions.toggleHide}
+            title={state.hidden ? "Show Track" : "Hide Track"}
+          >
+            {state.hidden ? "🙈" : "👁"}
+          </button>
+          <button
+            type="button"
+            className={`timeline-track-btn${state.muted ? " active" : ""}`}
+            onClick={actions.toggleMute}
+            title={state.muted ? "Unmute Track" : "Mute Track"}
+          >
+            {state.muted ? "🔇" : "🔊"}
+          </button>
+          <button
+            type="button"
+            className="timeline-track-btn danger"
+            disabled={isMainTrack}
+            onClick={actions.deleteTrack}
+            title={isMainTrack ? "Main Track cannot be deleted" : "Delete Track"}
+          >
+            🗑
+          </button>
+        </div>
+      );
+    },
+    [
+      deleteTrackById,
+      isRowHidden,
+      isRowLocked,
+      isRowMuted,
+      renderTrackControls,
+      toggleRowHide,
+      toggleRowLock,
+      toggleRowMute,
+    ],
+  );
+
   return (
     <div
       ref={rootRef}
@@ -1111,128 +1215,156 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
         if (event.target === event.currentTarget) updateSelection(null);
       }}
     >
-      <canvas ref={canvasRef} className="timeline-bg-canvas" />
-      <canvas
-        ref={rulerCanvasRef}
-        onPointerDown={(event) => {
-          event.preventDefault();
-          onRulerPointerDown?.(timeFromClientX(event.clientX), event);
-        }}
-        onDoubleClick={(event) => {
-          event.preventDefault();
-          onRulerDoubleClick?.(timeFromClientX(event.clientX), event);
-        }}
-        className="timeline-ruler-canvas"
-      />
-
-      <div
-        className="timeline-playhead-layer"
-        style={{ width: viewport.width, height: viewport.height }}
-      >
-        <div
-          ref={playheadRef}
-          onPointerDown={onPlayheadPointerDown}
-          onPointerMove={onPlayheadPointerMove}
-          onPointerUp={onPlayheadPointerUp}
-          className="timeline-playhead"
-        >
-          <div className="timeline-playhead-arrow" />
-          <div className="timeline-playhead-line" />
+      <div className="timeline-track-panel" style={{ width: trackControlsWidth }}>
+        <div className="timeline-track-panel-header">Tracks</div>
+        <div className="timeline-track-panel-body">
+          {trackLayouts.map((layout) => {
+            const row = editorData[layout.index];
+            if (!row) return null;
+            const top = layout.top - RULER_HEIGHT - viewport.scrollTop;
+            if (top + layout.height < -8 || top > viewport.height + 8) return null;
+            const isMainTrack = row.role === "main";
+            const hidden = isRowHidden(row.id);
+            const locked = isRowLocked(row.id);
+            return (
+              <div
+                key={row.id}
+                className={`timeline-track-row${hidden ? " track-hidden" : ""}${locked ? " track-locked" : ""}`}
+                style={{ top, height: layout.height }}
+              >
+                {renderTrackControlContent(row)}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div
-        ref={scrollRef}
-        className="timeline-scroll timeline-scroll-area"
-        onPointerDownCapture={(event) => {
-          const target = event.target as HTMLElement;
-          if (!target.closest("[data-clip-id]")) {
-            updateSelection(null);
-            onBlankAreaPointerDown?.(timeFromClientX(event.clientX), event);
-          }
-        }}
-        onDoubleClickCapture={(event) => {
-          const target = event.target as HTMLElement;
-          if (!target.closest("[data-clip-id]")) {
-            onBlankAreaDoubleClick?.(timeFromClientX(event.clientX), event);
-          }
-        }}
-      >
-        <div className="timeline-content" style={{ width: totalContentWidth, height: totalHeight }}>
-          {visibleTracks.map((row) => (
-            <React.Fragment key={row.id}>
-              {row.actions.map((action) => {
+      <div className="timeline-main" style={{ left: trackControlsWidth }}>
+        <canvas ref={canvasRef} className="timeline-bg-canvas" />
+        <canvas
+          ref={rulerCanvasRef}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            onRulerPointerDown?.(timeFromClientX(event.clientX), event);
+          }}
+          onDoubleClick={(event) => {
+            event.preventDefault();
+            onRulerDoubleClick?.(timeFromClientX(event.clientX), event);
+          }}
+          className="timeline-ruler-canvas"
+        />
+
+        <div
+          className="timeline-playhead-layer"
+          style={{ width: viewport.width, height: viewport.height }}
+        >
+          <div
+            ref={playheadRef}
+            onPointerDown={onPlayheadPointerDown}
+            onPointerMove={onPlayheadPointerMove}
+            onPointerUp={onPlayheadPointerUp}
+            className="timeline-playhead"
+          >
+            <div className="timeline-playhead-arrow" />
+            <div className="timeline-playhead-line" />
+          </div>
+        </div>
+
+        <div
+          ref={scrollRef}
+          className="timeline-scroll timeline-scroll-area"
+          onPointerDownCapture={(event) => {
+            const target = event.target as HTMLElement;
+            if (!target.closest("[data-clip-id]")) {
+              updateSelection(null);
+              onBlankAreaPointerDown?.(timeFromClientX(event.clientX), event);
+            }
+          }}
+          onDoubleClickCapture={(event) => {
+            const target = event.target as HTMLElement;
+            if (!target.closest("[data-clip-id]")) {
+              onBlankAreaDoubleClick?.(timeFromClientX(event.clientX), event);
+            }
+          }}
+        >
+          <div className="timeline-content" style={{ width: totalContentWidth, height: totalHeight }}>
+            {visibleTracks.map((row) => (
+              <React.Fragment key={row.id}>
+                {row.actions.map((action) => {
                 const isDraggedSource = drag?.originRowId === row.id && drag.actionId === action.id;
                 const isTrimmedClip = trim?.rowId === row.id && trim.actionId === action.id;
                 const isSelected = selection?.rowId === row.id && selection.actionId === action.id;
+                const isDimmed = isRowHidden(row.id);
                 const renderAction = isTrimmedClip ? trim.preview : action;
                 const left = timeToPixel(renderAction.start, zoom);
                 const width = Math.max(2, timeToPixel(getActionDuration(renderAction), zoom));
-                const layout = trackLayoutMap.get(row.id);
-                if (!layout) return null;
-                const top = layout.top;
-                const actionHeight = Math.max(14, layout.height);
+                  const layout = trackLayoutMap.get(row.id);
+                  if (!layout) return null;
+                  const top = layout.top;
+                  const actionHeight = Math.max(14, layout.height);
 
-                return (
-                  <ClipItem
-                    key={action.id}
-                    clip={action}
-                    renderClip={renderAction}
-                    left={left}
-                    top={top}
-                    width={width}
+                  return (
+                    <ClipItem
+                      key={action.id}
+                      clip={action}
+                      renderClip={renderAction}
+                      left={left}
+                      top={top}
+                      width={width}
                     height={actionHeight}
                     isSelected={isSelected}
                     isDraggedSource={isDraggedSource}
+                    isDimmed={isDimmed}
                     onPointerDown={(event) => onClipPointerDown(event, row.id, action)}
-                    onPointerMove={onClipPointerMove}
-                    onPointerUp={onClipPointerUp}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      updateSelection({ rowId: row.id, actionId: action.id });
-                    }}
-                    onTrimPointerDown={(event, side) => onTrimPointerDown(event, row.id, action, side)}
-                    onTrimPointerMove={onTrimPointerMove}
-                    onTrimPointerUp={onTrimPointerUp}
-                  />
-                );
-              })}
-            </React.Fragment>
-          ))}
+                      onPointerMove={onClipPointerMove}
+                      onPointerUp={onClipPointerUp}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        updateSelection({ rowId: row.id, actionId: action.id });
+                      }}
+                      onTrimPointerDown={(event, side) => onTrimPointerDown(event, row.id, action, side)}
+                      onTrimPointerMove={onTrimPointerMove}
+                      onTrimPointerUp={onTrimPointerUp}
+                    />
+                  );
+                })}
+              </React.Fragment>
+            ))}
 
-          {drag && (
-            <DragPreview
-              clip={drag.action}
-              left={timeToPixel(drag.previewStart, zoom)}
-              top={trackLayoutMap.get(drag.previewRowId)?.top ?? RULER_HEIGHT}
-              width={Math.max(2, timeToPixel(getActionDuration(drag.action), zoom))}
-              height={Math.max(14, trackLayoutMap.get(drag.previewRowId)?.height ?? rowHeight)}
-              isDropValid={drag.isDropValid}
-              onPointerMove={onClipPointerMove}
-              onPointerUp={onClipPointerUp}
-            />
-          )}
+            {drag && (
+              <DragPreview
+                clip={drag.action}
+                left={timeToPixel(drag.previewStart, zoom)}
+                top={trackLayoutMap.get(drag.previewRowId)?.top ?? RULER_HEIGHT}
+                width={Math.max(2, timeToPixel(getActionDuration(drag.action), zoom))}
+                height={Math.max(14, trackLayoutMap.get(drag.previewRowId)?.height ?? rowHeight)}
+                isDropValid={drag.isDropValid}
+                onPointerMove={onClipPointerMove}
+                onPointerUp={onClipPointerUp}
+              />
+            )}
 
-          {drag?.insertLineY != null && (
-            <div
-              className="timeline-insert-line"
-              style={{ transform: `translateY(${drag.insertLineY}px)` }}
-            />
-          )}
+            {drag?.insertLineY != null && (
+              <div
+                className="timeline-insert-line"
+                style={{ transform: `translateY(${drag.insertLineY}px)` }}
+              />
+            )}
 
-          {drag?.snappedTime != null && (
-            <div
-              className="timeline-snap-line"
-              style={{ transform: `translateX(${timeToPixel(drag.snappedTime, zoom)}px)` }}
-            />
-          )}
+            {drag?.snappedTime != null && (
+              <div
+                className="timeline-snap-line"
+                style={{ transform: `translateX(${timeToPixel(drag.snappedTime, zoom)}px)` }}
+              />
+            )}
 
-          {trim?.snappedTime != null && (
-            <div
-              className="timeline-snap-line"
-              style={{ transform: `translateX(${timeToPixel(trim.snappedTime, zoom)}px)` }}
-            />
-          )}
+            {trim?.snappedTime != null && (
+              <div
+                className="timeline-snap-line"
+                style={{ transform: `translateX(${timeToPixel(trim.snappedTime, zoom)}px)` }}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
