@@ -39,10 +39,12 @@ export type TimelineProps = {
   initialFrame?: number;
   minZoom?: number;
   maxZoom?: number;
+  zoom?: number;
   rowHeight?: number;
   onTracksChange?: (next: Track[]) => void;
   onFrameChange?: (frame: number) => void;
   onPlayingChange?: (playing: boolean) => void;
+  onZoomChange?: (zoom: number) => void;
   onRulerPointerDown?: (frame: number, event: ReactPointerEvent<HTMLCanvasElement>) => void;
   onBlankAreaPointerDown?: (frame: number, event: ReactPointerEvent<HTMLDivElement>) => void;
   onRulerDoubleClick?: (frame: number, event: ReactMouseEvent<HTMLCanvasElement>) => void;

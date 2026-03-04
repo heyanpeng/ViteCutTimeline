@@ -57,10 +57,12 @@ export const Timeline: React.FC<TimelineProps> = ({
   initialFrame = 0,
   minZoom = 0.25,
   maxZoom = 8,
+  zoom: controlledZoom,
   rowHeight = 52,
   onTracksChange,
   onFrameChange,
   onPlayingChange,
+  onZoomChange,
   onRulerPointerDown,
   onBlankAreaPointerDown,
   onRulerDoubleClick,
@@ -80,13 +82,14 @@ export const Timeline: React.FC<TimelineProps> = ({
   const rafRef = useRef<number | null>(null);
   const pendingCreateTrackIdRef = useRef<string | null>(null);
 
-  const [zoom, setZoom] = useState(1);
+  const [uncontrolledZoom, setUncontrolledZoom] = useState(1);
   const [viewport, setViewport] = useState({ width: 0, height: 0, scrollLeft: 0, scrollTop: 0 });
   const [drag, setDrag] = useState<DragState | null>(null);
   const [pendingDrag, setPendingDrag] = useState<PendingDragState | null>(null);
   const [trim, setTrim] = useState<TrimState | null>(null);
   const [selection, setSelection] = useState<Selection>(null);
 
+  const zoom = clamp(controlledZoom ?? uncontrolledZoom, minZoom, maxZoom);
   const totalContentWidth = frameToPixel(totalFrames, zoom);
   const lastClipEndFrame = useMemo(() => {
     let maxEnd = 0;
@@ -690,22 +693,33 @@ export const Timeline: React.FC<TimelineProps> = ({
     setTrim(null);
   };
 
+  const setZoomValue = useCallback(
+    (next: number) => {
+      const clamped = clamp(next, minZoom, maxZoom);
+      if (controlledZoom == null) {
+        setUncontrolledZoom(clamped);
+      }
+      onZoomChange?.(clamped);
+      return clamped;
+    },
+    [controlledZoom, maxZoom, minZoom, onZoomChange],
+  );
+
   const zoomAroundFrame = useCallback(
     (targetFrame: number, nextZoom: number, focusClientX?: number) => {
       const scrollEl = scrollRef.current;
       if (!scrollEl) return;
       const rect = scrollEl.getBoundingClientRect();
-      const clampedZoom = clamp(nextZoom, minZoom, maxZoom);
+      const clampedZoom = setZoomValue(nextZoom);
       if (clampedZoom === zoom) return;
       const clientX = focusClientX ?? rect.left + rect.width / 2;
       const nextAnchorX = frameToPixel(targetFrame, clampedZoom);
       const nextScrollLeft = nextAnchorX - (clientX - rect.left);
-      setZoom(clampedZoom);
       requestAnimationFrame(() => {
         scrollEl.scrollLeft = Math.max(0, nextScrollLeft);
       });
     },
-    [maxZoom, minZoom, zoom],
+    [setZoomValue, zoom],
   );
 
   const onWheelZoom = (event: React.WheelEvent<HTMLDivElement>) => {
@@ -770,23 +784,6 @@ export const Timeline: React.FC<TimelineProps> = ({
         if (event.target === event.currentTarget) setSelection(null);
       }}
     >
-      <div className="timeline-zoom-controls">
-        <button
-          type="button"
-          className="timeline-zoom-btn"
-          onClick={() => zoomAroundFrame(currentFrameRef.current, zoom * 1.2)}
-        >
-          +
-        </button>
-        <button
-          type="button"
-          className="timeline-zoom-btn"
-          onClick={() => zoomAroundFrame(currentFrameRef.current, zoom / 1.2)}
-        >
-          -
-        </button>
-      </div>
-
       <canvas ref={canvasRef} className="timeline-bg-canvas" />
       <canvas
         ref={rulerCanvasRef}

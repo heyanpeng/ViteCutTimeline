@@ -10,26 +10,6 @@
   touch-action: pan-x pan-y;
 }
 
-.timeline-zoom-controls {
-  position: absolute;
-  right: 12px;
-  top: 10px;
-  z-index: 5;
-  display: flex;
-  gap: 6px;
-}
-
-.timeline-zoom-btn {
-  background: #1f2937;
-  color: #e5e7eb;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  width: 24px;
-  height: 24px;
-  line-height: 1;
-  cursor: pointer;
-}
-
 .timeline-bg-canvas {
   position: absolute;
   inset: 0;
@@ -101,6 +81,9 @@
 .timeline-content {
   position: relative;
   min-height: 100%;
+  padding-right: 10px;
+  padding-bottom: 12px;
+  box-sizing: content-box;
 }
 
 .timeline-snap-line {
@@ -114,7 +97,7 @@
 
 .timeline-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #64748b #111827;
+  scrollbar-color: rgba(100, 116, 139, 0.45) rgba(17, 24, 39, 0.35);
 }
 
 .timeline-scroll::-webkit-scrollbar {
@@ -123,20 +106,21 @@
 }
 
 .timeline-scroll::-webkit-scrollbar-track {
-  background: #111827;
+  background: rgba(17, 24, 39, 0.35);
   border-radius: 999px;
 }
 
 .timeline-scroll::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #64748b 0%, #475569 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(100, 116, 139, 0.45) 0%,
+    rgba(71, 85, 105, 0.45) 100%
+  );
   border-radius: 999px;
-  border: 2px solid #111827;
-}
-
-.timeline-scroll::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
+  border: 2px solid rgba(17, 24, 39, 0.35);
+  transition: background 180ms ease;
 }
 
 .timeline-scroll::-webkit-scrollbar-corner {
-  background: #111827;
+  background: rgba(17, 24, 39, 0.35);
 }

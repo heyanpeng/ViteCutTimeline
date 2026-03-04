@@ -6,6 +6,8 @@ import "./App.css";
 const FPS = 30;
 const TOTAL_FRAMES = 30 * 120;
 const GITHUB_URL = "https://github.com/heyanpeng/ViteCutTimeline";
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 8;
 
 const createDemoTracks = (): Track[] => [
   {
@@ -155,6 +157,7 @@ export default function App() {
   const [dragSnapToClipEdges, setDragSnapToClipEdges] = useState(true);
   const [trimSnapToTimelineTicks, setTrimSnapToTimelineTicks] = useState(false);
   const [trimSnapToClipEdges, setTrimSnapToClipEdges] = useState(true);
+  const [zoom, setZoom] = useState(1);
 
   const currentTime = useMemo(() => (frame / FPS).toFixed(2), [frame]);
   const handleSeekFromBlankDoubleClick = useCallback((nextFrame: number) => {
@@ -170,6 +173,7 @@ export default function App() {
     () => ((frame / TOTAL_FRAMES) * 100).toFixed(1),
     [frame],
   );
+  const zoomPercent = useMemo(() => `${Math.round(zoom * 100)}%`, [zoom]);
 
   return (
     <div className="demo-page">
@@ -283,6 +287,33 @@ export default function App() {
               Clip Edges
             </label>
           </fieldset>
+          <fieldset className="control-group control-group-zoom">
+            <legend>Zoom</legend>
+            <button
+              type="button"
+              className="ghost-btn zoom-btn"
+              onClick={() => setZoom((z) => Math.max(MIN_ZOOM, z / 1.2))}
+            >
+              -
+            </button>
+            <input
+              className="zoom-slider"
+              type="range"
+              min={MIN_ZOOM}
+              max={MAX_ZOOM}
+              step={0.01}
+              value={zoom}
+              onChange={(e) => setZoom(Number(e.target.value))}
+            />
+            <button
+              type="button"
+              className="ghost-btn zoom-btn"
+              onClick={() => setZoom((z) => Math.min(MAX_ZOOM, z * 1.2))}
+            >
+              +
+            </button>
+            <span className="zoom-value">{zoomPercent}</span>
+          </fieldset>
           <p className="hint">Tip: Hold Ctrl/Cmd + mouse wheel to zoom.</p>
         </div>
       </section>
@@ -300,9 +331,13 @@ export default function App() {
           trimSnapToTimelineTicks={trimSnapToTimelineTicks}
           dragSnapToClipEdges={dragSnapToClipEdges}
           trimSnapToClipEdges={trimSnapToClipEdges}
+          minZoom={MIN_ZOOM}
+          maxZoom={MAX_ZOOM}
+          zoom={zoom}
           onTracksChange={setTracks}
           onFrameChange={setFrame}
           onPlayingChange={setPlaying}
+          onZoomChange={setZoom}
           onRulerPointerDown={handleSeekFromRulerPointerDown}
           onBlankAreaDoubleClick={handleSeekFromBlankDoubleClick}
           onRulerDoubleClick={handleSeekFromRulerDoubleClick}
