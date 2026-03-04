@@ -1,5 +1,4 @@
 import React, {
-  CSSProperties,
   PointerEvent,
   useCallback,
   useEffect,
@@ -37,6 +36,7 @@ import {
   getTickStepFrames,
   pixelToFrame,
 } from "./utils";
+import "./Timeline.css";
 
 export { frameToPixel, pixelToFrame } from "./utils";
 
@@ -761,54 +761,33 @@ export const Timeline: React.FC<TimelineProps> = ({
     scrubbingPointerIdRef.current = null;
   };
 
-  const rootStyle: CSSProperties = {
-    position: "relative",
-    width: "100%",
-    height: 320,
-    overflow: "hidden",
-    border: "1px solid #2b3342",
-    borderRadius: 12,
-    background: "#0f1115",
-    userSelect: "none",
-    touchAction: "pan-x pan-y",
-  };
-
   return (
     <div
       ref={rootRef}
-      style={rootStyle}
+      className="timeline-root"
       onWheel={onWheelZoom}
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) setSelection(null);
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          right: 12,
-          top: 10,
-          zIndex: 5,
-          display: "flex",
-          gap: 6,
-        }}
-      >
+      <div className="timeline-zoom-controls">
         <button
           type="button"
+          className="timeline-zoom-btn"
           onClick={() => zoomAroundFrame(currentFrameRef.current, zoom * 1.2)}
-          style={{ background: "#1f2937", color: "#e5e7eb", border: "1px solid #334155", borderRadius: 6 }}
         >
           +
         </button>
         <button
           type="button"
+          className="timeline-zoom-btn"
           onClick={() => zoomAroundFrame(currentFrameRef.current, zoom / 1.2)}
-          style={{ background: "#1f2937", color: "#e5e7eb", border: "1px solid #334155", borderRadius: 6 }}
         >
           -
         </button>
       </div>
 
-      <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }} />
+      <canvas ref={canvasRef} className="timeline-bg-canvas" />
       <canvas
         ref={rulerCanvasRef}
         onPointerDown={(event) => {
@@ -819,78 +798,28 @@ export const Timeline: React.FC<TimelineProps> = ({
           event.preventDefault();
           onRulerDoubleClick?.(frameFromClientX(event.clientX), event);
         }}
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: 0,
-          height: RULER_HEIGHT,
-          pointerEvents: "auto",
-          zIndex: 7,
-          cursor: "pointer",
-        }}
+        className="timeline-ruler-canvas"
       />
 
       <div
-        style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          width: viewport.width,
-          height: viewport.height,
-          pointerEvents: "none",
-          zIndex: 10,
-          overflow: "hidden",
-        }}
+        className="timeline-playhead-layer"
+        style={{ width: viewport.width, height: viewport.height }}
       >
         <div
           ref={playheadRef}
           onPointerDown={onPlayheadPointerDown}
           onPointerMove={onPlayheadPointerMove}
           onPointerUp={onPlayheadPointerUp}
-          style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: -5,
-            width: 12,
-            transform: "translateX(0px)",
-            willChange: "transform",
-            pointerEvents: "auto",
-            cursor: "ew-resize",
-          }}
+          className="timeline-playhead"
         >
-          <div
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: 0,
-              marginLeft: -6,
-              width: 0,
-              height: 0,
-              borderLeft: "6px solid transparent",
-              borderRight: "6px solid transparent",
-              borderTop: "8px solid #ef4444",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              left: "50%",
-              marginLeft: -1,
-              top: 8,
-              bottom: 0,
-              width: 2,
-              background: "#ef4444",
-            }}
-          />
+          <div className="timeline-playhead-arrow" />
+          <div className="timeline-playhead-line" />
         </div>
       </div>
 
       <div
         ref={scrollRef}
-        className="timeline-scroll"
-        style={{ position: "absolute", inset: 0, overflow: "auto", zIndex: 1 }}
+        className="timeline-scroll timeline-scroll-area"
         onPointerDownCapture={(event) => {
           const target = event.target as HTMLElement;
           if (!target.closest("[data-clip-id]")) {
@@ -905,7 +834,7 @@ export const Timeline: React.FC<TimelineProps> = ({
           }
         }}
       >
-        <div style={{ position: "relative", width: totalContentWidth, height: totalHeight, minHeight: "100%" }}>
+        <div className="timeline-content" style={{ width: totalContentWidth, height: totalHeight }}>
           {visibleTracks.map((track) => (
             <React.Fragment key={track.id}>
               {track.clips.map((clip) => {
@@ -962,29 +891,15 @@ export const Timeline: React.FC<TimelineProps> = ({
 
           {drag?.snappedFrame != null && (
             <div
-              style={{
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                width: 1,
-                background: "#22d3ee",
-                transform: `translateX(${frameToPixel(drag.snappedFrame, zoom)}px)`,
-                zIndex: 3,
-              }}
+              className="timeline-snap-line"
+              style={{ transform: `translateX(${frameToPixel(drag.snappedFrame, zoom)}px)` }}
             />
           )}
 
           {trim?.snappedFrame != null && (
             <div
-              style={{
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                width: 1,
-                background: "#22d3ee",
-                transform: `translateX(${frameToPixel(trim.snappedFrame, zoom)}px)`,
-                zIndex: 3,
-              }}
+              className="timeline-snap-line"
+              style={{ transform: `translateX(${frameToPixel(trim.snappedFrame, zoom)}px)` }}
             />
           )}
         </div>

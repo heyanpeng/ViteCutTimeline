@@ -1,0 +1,63 @@
+.clip-item {
+  position: absolute;
+  border-radius: 8px;
+  border: 1px solid #1d4ed8;
+  box-sizing: border-box;
+  cursor: grab;
+  overflow: hidden;
+  color: #e2e8f0;
+  padding: 6px 8px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.clip-item-selected {
+  box-shadow: 0 0 0 2px #fbbf24 inset;
+}
+
+.clip-item-dragging {
+  cursor: grabbing;
+  opacity: 0;
+}
+
+.clip-item-trim-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.clip-item-trim-left {
+  left: 0;
+}
+
+.clip-item-trim-right {
+  right: 0;
+}
+
+.clip-item-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.clip-item-content {
+  min-width: 0;
+}
+
+.clip-item-label {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 16px;
+}

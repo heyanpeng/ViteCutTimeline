@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Timeline } from "./timeline/Timeline";
 import type { Track } from "./timeline/model";
+import "./App.css";
 
 const FPS = 30;
 const TOTAL_FRAMES = 30 * 120;

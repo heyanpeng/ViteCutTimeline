@@ -1,0 +1,142 @@
+.timeline-root {
+  position: relative;
+  width: 100%;
+  height: 320px;
+  overflow: hidden;
+  border: 1px solid #2b3342;
+  border-radius: 12px;
+  background: #0f1115;
+  user-select: none;
+  touch-action: pan-x pan-y;
+}
+
+.timeline-zoom-controls {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  z-index: 5;
+  display: flex;
+  gap: 6px;
+}
+
+.timeline-zoom-btn {
+  background: #1f2937;
+  color: #e5e7eb;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.timeline-bg-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.timeline-ruler-canvas {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 44px;
+  pointer-events: auto;
+  z-index: 7;
+  cursor: pointer;
+}
+
+.timeline-playhead-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 10;
+  overflow: hidden;
+}
+
+.timeline-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -5px;
+  width: 12px;
+  transform: translateX(0);
+  will-change: transform;
+  pointer-events: auto;
+  cursor: ew-resize;
+}
+
+.timeline-playhead-arrow {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  margin-left: -6px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid #ef4444;
+}
+
+.timeline-playhead-line {
+  position: absolute;
+  left: 50%;
+  margin-left: -1px;
+  top: 8px;
+  bottom: 0;
+  width: 2px;
+  background: #ef4444;
+}
+
+.timeline-scroll-area {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  z-index: 1;
+}
+
+.timeline-content {
+  position: relative;
+  min-height: 100%;
+}
+
+.timeline-snap-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #22d3ee;
+  z-index: 3;
+}
+
+.timeline-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #64748b #111827;
+}
+
+.timeline-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 12px;
+}
+
+.timeline-scroll::-webkit-scrollbar-track {
+  background: #111827;
+  border-radius: 999px;
+}
+
+.timeline-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #64748b 0%, #475569 100%);
+  border-radius: 999px;
+  border: 2px solid #111827;
+}
+
+.timeline-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
+}
+
+.timeline-scroll::-webkit-scrollbar-corner {
+  background: #111827;
+}
