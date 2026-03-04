@@ -480,7 +480,7 @@ export default function App() {
   const [tracks, setTracks] = useState<Track[]>(() => createDemoTracks());
   const [playing, setPlaying] = useState(false);
   const [frame, setFrame] = useState(0);
-  const [showMinorTicks, setShowMinorTicks] = useState(true);
+  const [showMinorTicks, setShowMinorTicks] = useState(false);
   const [showHorizontalLines, setShowHorizontalLines] = useState(true);
   const [playEndBehavior, setPlayEndBehavior] = useState<"stop" | "loop">(
     "stop",

@@ -74,7 +74,8 @@
 .timeline-scroll-area {
   position: absolute;
   inset: 0;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: scroll;
   z-index: 1;
 }
 
@@ -82,7 +83,7 @@
   position: relative;
   min-height: 100%;
   padding-right: 10px;
-  padding-bottom: 12px;
+  padding-bottom: 10px;
   box-sizing: content-box;
 }
 
@@ -97,30 +98,34 @@
 
 .timeline-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(100, 116, 139, 0.45) rgba(17, 24, 39, 0.35);
+  scrollbar-color: rgba(100, 116, 139, 0.62) rgba(17, 24, 39, 0.45);
 }
 
 .timeline-scroll::-webkit-scrollbar {
   width: 10px;
-  height: 12px;
+  height: 10px;
 }
 
 .timeline-scroll::-webkit-scrollbar-track {
-  background: rgba(17, 24, 39, 0.35);
+  background: rgba(17, 24, 39, 0.45);
   border-radius: 999px;
+}
+
+.timeline-scroll::-webkit-scrollbar-track:horizontal {
+  background: transparent;
 }
 
 .timeline-scroll::-webkit-scrollbar-thumb {
   background: linear-gradient(
     180deg,
-    rgba(100, 116, 139, 0.45) 0%,
-    rgba(71, 85, 105, 0.45) 100%
+    rgba(100, 116, 139, 0.62) 0%,
+    rgba(71, 85, 105, 0.62) 100%
   );
   border-radius: 999px;
-  border: 2px solid rgba(17, 24, 39, 0.35);
+  border: 2px solid rgba(17, 24, 39, 0.45);
   transition: background 180ms ease;
 }
 
 .timeline-scroll::-webkit-scrollbar-corner {
-  background: rgba(17, 24, 39, 0.35);
+  background: rgba(17, 24, 39, 0.45);
 }
