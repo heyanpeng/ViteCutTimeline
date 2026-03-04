@@ -45,9 +45,11 @@ export const Timeline: React.FC<TimelineProps> = ({
   fps,
   totalFrames,
   playing,
+  playEndBehavior = "stop",
   currentFrame,
   showMinorTicks = true,
   showHorizontalLines = true,
+  dragSnapToClipEdges = true,
   trimSnapToClipEdges = true,
   trimSnapToTimelineTicks = true,
   trimSnapThresholdPx = SNAP_PX,
@@ -79,6 +81,15 @@ export const Timeline: React.FC<TimelineProps> = ({
   const [selection, setSelection] = useState<Selection>(null);
 
   const totalContentWidth = frameToPixel(totalFrames, zoom);
+  const lastClipEndFrame = useMemo(() => {
+    let maxEnd = 0;
+    tracks.forEach((track) => {
+      track.clips.forEach((clip) => {
+        maxEnd = Math.max(maxEnd, getClipEnd(clip));
+      });
+    });
+    return clamp(maxEnd, 0, totalFrames);
+  }, [totalFrames, tracks]);
   const trackLayouts = useMemo<TrackLayout[]>(() => {
     let y = RULER_HEIGHT;
     return tracks.map((track, index) => {
@@ -232,7 +243,8 @@ export const Timeline: React.FC<TimelineProps> = ({
     const loop = (now: number) => {
       const elapsed = (now - lastTime) / 1000;
       lastTime = now;
-      const nextFrame = clamp(currentFrameRef.current + elapsed * fps, 0, totalFrames);
+      const playbackEndFrame = Math.max(0, lastClipEndFrame);
+      const nextFrame = clamp(currentFrameRef.current + elapsed * fps, 0, playbackEndFrame);
       currentFrameRef.current = nextFrame;
       updatePlayheadPosition(nextFrame);
 
@@ -242,7 +254,15 @@ export const Timeline: React.FC<TimelineProps> = ({
         onFrameChange?.(rounded);
       }
 
-      if (nextFrame >= totalFrames) return;
+      if (nextFrame >= playbackEndFrame) {
+        if (playEndBehavior === "loop" && playbackEndFrame > 0) {
+          currentFrameRef.current = 0;
+          updatePlayheadPosition(0);
+          onFrameChange?.(0);
+          rafRef.current = requestAnimationFrame(loop);
+        }
+        return;
+      }
       rafRef.current = requestAnimationFrame(loop);
     };
 
@@ -252,18 +272,20 @@ export const Timeline: React.FC<TimelineProps> = ({
       rafRef.current = null;
       lastTime = 0;
     };
-  }, [fps, onFrameChange, playing, totalFrames, updatePlayheadPosition]);
+  }, [fps, lastClipEndFrame, onFrameChange, playEndBehavior, playing, updatePlayheadPosition]);
 
   const snapFrame = useCallback(
     (clipId: string, proposedStart: number, duration: number) => {
       const thresholdFrames = pixelToFrame(SNAP_PX, zoom);
       const candidates: number[] = [Math.floor(currentFrameRef.current)];
-      tracks.forEach((track) => {
-        track.clips.forEach((clip) => {
-          if (clip.id === clipId) return;
-          candidates.push(clip.startFrame, clip.startFrame + clip.duration);
+      if (dragSnapToClipEdges) {
+        tracks.forEach((track) => {
+          track.clips.forEach((clip) => {
+            if (clip.id === clipId) return;
+            candidates.push(clip.startFrame, clip.startFrame + clip.duration);
+          });
         });
-      });
+      }
 
       let best: { delta: number; frame: number } | null = null;
       const movingEdges = [proposedStart, proposedStart + duration];
@@ -279,7 +301,7 @@ export const Timeline: React.FC<TimelineProps> = ({
       if (!best) return { startFrame: proposedStart, snappedFrame: null as number | null };
       return { startFrame: proposedStart + best.delta, snappedFrame: best.frame };
     },
-    [tracks, zoom],
+    [dragSnapToClipEdges, tracks, zoom],
   );
 
   const getTrackIdByClientY = useCallback(
@@ -826,8 +848,21 @@ export const Timeline: React.FC<TimelineProps> = ({
             style={{
               position: "absolute",
               left: "50%",
-              marginLeft: -1,
               top: 0,
+              marginLeft: -6,
+              width: 0,
+              height: 0,
+              borderLeft: "6px solid transparent",
+              borderRight: "6px solid transparent",
+              borderTop: "8px solid #ef4444",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              marginLeft: -1,
+              top: 8,
               bottom: 0,
               width: 2,
               background: "#ef4444",

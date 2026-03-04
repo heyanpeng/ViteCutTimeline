@@ -24,9 +24,11 @@ export type TimelineProps = {
   fps: number;
   totalFrames: number;
   playing: boolean;
+  playEndBehavior?: "stop" | "loop";
   currentFrame?: number;
   showMinorTicks?: boolean;
   showHorizontalLines?: boolean;
+  dragSnapToClipEdges?: boolean;
   trimSnapToClipEdges?: boolean;
   trimSnapToTimelineTicks?: boolean;
   trimSnapThresholdPx?: number;
@@ -85,4 +87,3 @@ export type TrackLayout = {
   height: number;
   bottom: number;
 };
-

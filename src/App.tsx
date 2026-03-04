@@ -54,6 +54,8 @@ export default function App() {
   const [frame, setFrame] = useState(0);
   const [showMinorTicks, setShowMinorTicks] = useState(true);
   const [showHorizontalLines, setShowHorizontalLines] = useState(true);
+  const [playEndBehavior, setPlayEndBehavior] = useState<"stop" | "loop">("stop");
+  const [dragSnapToClipEdges, setDragSnapToClipEdges] = useState(true);
   const [trimSnapToTimelineTicks, setTrimSnapToTimelineTicks] = useState(true);
   const [trimSnapToClipEdges, setTrimSnapToClipEdges] = useState(true);
 
@@ -100,6 +102,18 @@ export default function App() {
 
         <div className="panel-row panel-row-wrap">
           <fieldset className="control-group">
+            <legend>Playback</legend>
+            <label>
+              <input
+                type="checkbox"
+                checked={playEndBehavior === "loop"}
+                onChange={(e) => setPlayEndBehavior(e.target.checked ? "loop" : "stop")}
+              />
+              Loop At Last Clip End
+            </label>
+          </fieldset>
+
+          <fieldset className="control-group">
             <legend>Grid</legend>
             <label>
               <input
@@ -116,6 +130,18 @@ export default function App() {
                 onChange={(e) => setShowHorizontalLines(e.target.checked)}
               />
               Horizontal Lines
+            </label>
+          </fieldset>
+
+          <fieldset className="control-group">
+            <legend>Drag Snap</legend>
+            <label>
+              <input
+                type="checkbox"
+                checked={dragSnapToClipEdges}
+                onChange={(e) => setDragSnapToClipEdges(e.target.checked)}
+              />
+              Clip Edges
             </label>
           </fieldset>
 
@@ -148,10 +174,12 @@ export default function App() {
           fps={FPS}
           totalFrames={TOTAL_FRAMES}
           playing={playing}
+          playEndBehavior={playEndBehavior}
           currentFrame={frame}
           showMinorTicks={showMinorTicks}
           showHorizontalLines={showHorizontalLines}
           trimSnapToTimelineTicks={trimSnapToTimelineTicks}
+          dragSnapToClipEdges={dragSnapToClipEdges}
           trimSnapToClipEdges={trimSnapToClipEdges}
           onTracksChange={setTracks}
           onFrameChange={setFrame}
