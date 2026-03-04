@@ -4,7 +4,7 @@ import type { Track } from "./timeline/model";
 
 const FPS = 30;
 const TOTAL_FRAMES = 30 * 120;
-const GITHUB_URL = "https://github.com/your-org/vite-cut-timeline";
+const GITHUB_URL = "https://github.com/heyanpeng/ViteCutTimeline";
 
 const createDemoTracks = (): Track[] => [
   {
