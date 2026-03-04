@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { Timeline } from "./timeline/Timeline";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { Timeline, type TimelineRef } from "./timeline/Timeline";
 import type { TimelineAction, TimelineRow } from "./timeline/model";
 import { formatTimeWithMs } from "./timeline/utils";
 import "./App.css";
@@ -22,16 +22,16 @@ const a = (data: TimelineAction): TimelineAction => data;
 
 const createDemoRows = (): TimelineRow[] => [
   {
-    id: "text-1",
-    name: "Text A",
+    id: "text",
+    name: "Text",
     role: "normal",
     height: 40,
     actions: [
       a({
         id: "txt-1",
         effectId: "text",
-        start: 0.4,
-        end: 3.8,
+        start: 1,
+        end: 6,
         kind: "text",
         title: "Open Title",
         icon: "𝑇",
@@ -40,74 +40,26 @@ const createDemoRows = (): TimelineRow[] => [
       a({
         id: "txt-2",
         effectId: "text",
-        start: 8.5,
-        end: 12.4,
+        start: 18,
+        end: 24,
         kind: "text",
         title: "Subtitle",
         icon: "𝑇",
         color: "#5b4bc2",
       }),
-      a({
-        id: "txt-3",
-        effectId: "text",
-        start: 82.3,
-        end: 91.8,
-        kind: "text",
-        title: "Ending Credits",
-        icon: "𝑇",
-        color: "#4f46b8",
-      }),
     ],
   },
   {
-    id: "solid-1",
-    name: "Solid A",
-    role: "normal",
-    height: 40,
-    actions: [
-      a({
-        id: "solid-1",
-        effectId: "solid",
-        start: 2.2,
-        end: 5.2,
-        kind: "solid",
-        title: "Flash",
-        icon: "●",
-        color: "#a64ac9",
-      }),
-      a({
-        id: "solid-2",
-        effectId: "solid",
-        start: 38.4,
-        end: 44.1,
-        kind: "solid",
-        title: "Mask BG",
-        icon: "●",
-        color: "#9b3fbf",
-      }),
-      a({
-        id: "solid-3",
-        effectId: "solid",
-        start: 92.6,
-        end: 103.2,
-        kind: "solid",
-        title: "Color Block",
-        icon: "●",
-        color: "#8f34b4",
-      }),
-    ],
-  },
-  {
-    id: "image-1",
-    name: "Image A",
+    id: "image",
+    name: "Image",
     role: "normal",
     height: 40,
     actions: [
       a({
         id: "img-1",
         effectId: "image",
-        start: 12.5,
-        end: 17.2,
+        start: 8,
+        end: 13,
         kind: "image",
         title: "Hero Image",
         icon: "🖼",
@@ -116,66 +68,18 @@ const createDemoRows = (): TimelineRow[] => [
       a({
         id: "img-2",
         effectId: "image",
-        start: 54.2,
-        end: 61.4,
-        kind: "image",
-        title: "Diagram",
-        icon: "🖼",
-        color: "#2f6f39",
-      }),
-      a({
-        id: "img-3",
-        effectId: "image",
-        start: 100.8,
-        end: 108.7,
+        start: 25,
+        end: 31,
         kind: "image",
         title: "Outro Card",
         icon: "🖼",
-        color: "#2a6333",
-      }),
-    ],
-  },
-  {
-    id: "video-upper-a",
-    name: "Video Upper A",
-    role: "normal",
-    height: 50,
-    actions: [
-      a({
-        id: "vu-a-1",
-        effectId: "video",
-        start: 1.1,
-        end: 4.2,
-        inPoint: 0,
-        outPoint: 3.1,
-        kind: "video",
-        title: "B-roll 01",
-      }),
-      a({
-        id: "vu-a-2",
-        effectId: "video",
-        start: 17.3,
-        end: 25.2,
-        inPoint: 1.6,
-        outPoint: 9.5,
-        kind: "video",
-        title: "B-roll 02",
-      }),
-      a({
-        id: "vu-a-3",
-        effectId: "video",
-        start: 32.5,
-        end: 41.2,
-        inPoint: 0.7,
-        outPoint: 9.4,
-        kind: "video",
-        title: "B-roll 03",
+        color: "#2f6f39",
       }),
     ],
   },
   {
     id: "video-main",
-    name: "Video Main",
+    name: "Main Video",
     role: "main",
     height: 70,
     actions: [
@@ -183,143 +87,56 @@ const createDemoRows = (): TimelineRow[] => [
         id: "v1",
         effectId: "video",
         start: 0,
-        end: 10.5,
+        end: 16,
         inPoint: 0,
-        outPoint: 10.5,
+        outPoint: 16,
         kind: "video",
-        title: "Main Video 01",
+        title: "A-Roll 01",
       }),
       a({
         id: "v2",
         effectId: "video",
-        start: 11.4,
-        end: 26.2,
-        inPoint: 1.2,
-        outPoint: 16,
-        kind: "video",
-        title: "Main Video 02",
-      }),
-      a({
-        id: "v3",
-        effectId: "video",
-        start: 27.1,
-        end: 42.4,
-        inPoint: 0.6,
-        outPoint: 15.9,
-        kind: "video",
-        title: "Main Video 03",
-      }),
-      a({
-        id: "v4",
-        effectId: "video",
-        start: 43.5,
-        end: 61.1,
+        start: 17,
+        end: 36,
         inPoint: 2.2,
-        outPoint: 19.8,
+        outPoint: 21.2,
         kind: "video",
-        title: "Main Video 04",
-      }),
-      a({
-        id: "v5",
-        effectId: "video",
-        start: 62.2,
-        end: 82.3,
-        inPoint: 3,
-        outPoint: 23.1,
-        kind: "video",
-        title: "Main Video 05",
-      }),
-      a({
-        id: "v6",
-        effectId: "video",
-        start: 83.1,
-        end: 111.8,
-        inPoint: 1.5,
-        outPoint: 30.2,
-        kind: "video",
-        title: "Main Video 06",
+        title: "A-Roll 02",
       }),
     ],
   },
   {
-    id: "audio-vo",
-    name: "Audio VO",
+    id: "audio",
+    name: "Audio",
     role: "audio",
     height: 50,
     actions: [
       a({
-        id: "a-vo-1",
+        id: "a1",
         effectId: "audio",
         start: 0,
-        end: 29.5,
+        end: 18,
         inPoint: 0,
-        outPoint: 29.5,
+        outPoint: 18,
         kind: "audio",
-        title: "Voice Over 01",
+        title: "Voice Over",
       }),
       a({
-        id: "a-vo-2",
+        id: "a2",
         effectId: "audio",
-        start: 31.1,
-        end: 54.9,
-        inPoint: 0.5,
-        outPoint: 24.3,
+        start: 18.5,
+        end: 36,
+        inPoint: 1,
+        outPoint: 18.5,
         kind: "audio",
-        title: "Voice Over 02",
-      }),
-      a({
-        id: "a-vo-3",
-        effectId: "audio",
-        start: 58,
-        end: 101.2,
-        inPoint: 1.1,
-        outPoint: 44.3,
-        kind: "audio",
-        title: "Voice Over 03",
-      }),
-    ],
-  },
-  {
-    id: "audio-music",
-    name: "Audio Music",
-    role: "audio",
-    height: 50,
-    actions: [
-      a({
-        id: "a-bg-1",
-        effectId: "audio",
-        start: 0,
-        end: 50.2,
-        inPoint: 0,
-        outPoint: 50.2,
-        kind: "audio",
-        title: "BGM 01",
-      }),
-      a({
-        id: "a-bg-2",
-        effectId: "audio",
-        start: 50.6,
-        end: 86.4,
-        inPoint: 0.3,
-        outPoint: 36.1,
-        kind: "audio",
-        title: "BGM 02",
-      }),
-      a({
-        id: "a-bg-3",
-        effectId: "audio",
-        start: 86.8,
-        end: 114.2,
-        inPoint: 0.2,
-        outPoint: 27.6,
-        kind: "audio",
-        title: "BGM 03",
+        title: "BGM",
       }),
     ],
   },
 ];
 
 export default function App() {
+  const timelineRef = useRef<TimelineRef | null>(null);
   const [editorData, setEditorData] = useState<TimelineRow[]>(() =>
     createDemoRows(),
   );
@@ -487,6 +304,13 @@ export default function App() {
             >
               +
             </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={() => timelineRef.current?.fitToContent()}
+            >
+              Fit
+            </button>
             <span className="zoom-value">{zoomPercent}</span>
           </fieldset>
           <p className="hint">Tip: Hold Ctrl/Cmd + mouse wheel to zoom.</p>
@@ -495,6 +319,7 @@ export default function App() {
 
       <section className="stage">
         <Timeline
+          ref={timelineRef}
           editorData={editorData}
           duration={DURATION}
           playing={playing}

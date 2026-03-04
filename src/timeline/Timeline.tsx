@@ -1,7 +1,9 @@
 import React, {
   PointerEvent,
+  forwardRef,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -25,6 +27,7 @@ import type {
   Selection,
   TimelineAction,
   TimelineProps,
+  TimelineRef,
   TimelineRow,
   TrackLayout,
   TrimState,
@@ -41,8 +44,9 @@ import "./Timeline.css";
 const MIN_ACTION_DURATION = 0.04;
 
 export { timeToPixel as frameToPixel, pixelToTime as pixelToFrame } from "./utils";
+export type { TimelineRef } from "./types";
 
-export const Timeline: React.FC<TimelineProps> = ({
+export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
   editorData,
   duration,
   playing,
@@ -70,7 +74,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   onBlankAreaPointerDown,
   onRulerDoubleClick,
   onBlankAreaDoubleClick,
-}) => {
+}, ref) => {
   const isSourceBoundAction = useCallback((action: TimelineAction) => {
     return action.kind === "video" || action.kind === "audio";
   }, []);
@@ -92,6 +96,20 @@ export const Timeline: React.FC<TimelineProps> = ({
   const [selection, setSelection] = useState<Selection>(null);
 
   const zoom = clamp(controlledZoom ?? uncontrolledZoom, minZoom, maxZoom);
+  const contentBounds = useMemo(() => {
+    let minStart = Number.POSITIVE_INFINITY;
+    let maxEnd = 0;
+    editorData.forEach((row) => {
+      row.actions.forEach((action) => {
+        minStart = Math.min(minStart, action.start);
+        maxEnd = Math.max(maxEnd, action.end);
+      });
+    });
+    return {
+      minStart: Number.isFinite(minStart) ? minStart : 0,
+      maxEnd,
+    };
+  }, [editorData]);
   const getDefaultTrackHeight = useCallback(
     (role?: TimelineRow["role"], kind?: TimelineAction["kind"]) => {
       if (role === "main") return trackHeightPresets?.main ?? rowHeight;
@@ -929,6 +947,36 @@ export const Timeline: React.FC<TimelineProps> = ({
     [controlledZoom, maxZoom, minZoom, onZoomChange],
   );
 
+  const fitToContent = useCallback(
+    (options?: { paddingPx?: number }) => {
+      const scrollEl = scrollRef.current;
+      if (!scrollEl) return;
+      const paddingPx = options?.paddingPx ?? 24;
+      const viewportWidth = Math.max(1, scrollEl.clientWidth);
+      const start = Math.max(0, contentBounds.minStart);
+      const end = Math.max(start + 0.001, contentBounds.maxEnd);
+      const span = end - start;
+      const usableWidth = Math.max(1, viewportWidth - paddingPx * 2);
+      const nextZoom = clamp(usableWidth / timeToPixel(span, 1), minZoom, maxZoom);
+      setZoomValue(nextZoom);
+      requestAnimationFrame(() => {
+        const current = scrollRef.current;
+        if (!current) return;
+        const startPx = timeToPixel(start, nextZoom);
+        current.scrollLeft = Math.max(0, startPx - paddingPx);
+      });
+    },
+    [contentBounds.maxEnd, contentBounds.minStart, maxZoom, minZoom, setZoomValue],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      fitToContent,
+    }),
+    [fitToContent],
+  );
+
   const zoomAroundTime = useCallback(
     (targetTime: number, nextZoom: number, focusClientX?: number) => {
       const scrollEl = scrollRef.current;
@@ -1156,4 +1204,6 @@ export const Timeline: React.FC<TimelineProps> = ({
       </div>
     </div>
   );
-};
+});
+
+Timeline.displayName = "Timeline";

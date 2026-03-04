@@ -78,6 +78,10 @@ export type TimelineProps = {
   onBlankAreaDoubleClick?: (time: number, event: ReactMouseEvent<HTMLDivElement>) => void;
 };
 
+export type TimelineRef = {
+  fitToContent: (options?: { paddingPx?: number }) => void;
+};
+
 export type DragState = {
   originRowId: string;
   previewRowId: string;
