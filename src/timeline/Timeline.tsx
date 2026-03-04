@@ -502,9 +502,25 @@ export const Timeline: React.FC<TimelineProps> = ({
       for (const [start, end] of intervals) {
         if (proposedStart >= start && proposedStart <= end) return proposedStart;
       }
+      const thresholdFrames = pixelToFrame(SNAP_PX, zoom);
+      let nearestBoundary: number | null = null;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      for (const [start, end] of intervals) {
+        const startDistance = Math.abs(proposedStart - start);
+        if (startDistance <= thresholdFrames && startDistance < nearestDistance) {
+          nearestDistance = startDistance;
+          nearestBoundary = start;
+        }
+        const endDistance = Math.abs(proposedStart - end);
+        if (endDistance <= thresholdFrames && endDistance < nearestDistance) {
+          nearestDistance = endDistance;
+          nearestBoundary = end;
+        }
+      }
+      if (nearestBoundary != null) return nearestBoundary;
       return null;
     },
-    [getValidStartIntervals],
+    [getValidStartIntervals, zoom],
   );
 
   const snapTrimEdgeFrame = useCallback(
@@ -585,6 +601,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         startClientX: pendingDrag.startClientX,
         originFrame: pendingDrag.clip.startFrame,
         previewStartFrame: pendingDrag.clip.startFrame,
+        commitStartFrame: pendingDrag.clip.startFrame,
         snappedFrame: null,
         isDropValid: true,
       });
@@ -614,19 +631,21 @@ export const Timeline: React.FC<TimelineProps> = ({
     const deltaFrame = Math.round(pixelToFrame(dx, zoom));
     const proposed = clamp(drag.originFrame + deltaFrame, 0, totalFrames - drag.clip.duration);
     const snapped = snapFrame(drag.clipId, proposed, drag.clip.duration);
+    const visualStart = snapped.startFrame;
     const newTrackId = maybeAppendTrackForDrag(event.clientY, drag.clip);
     const targetTrackId = newTrackId ?? getTrackIdByClientY(event.clientY) ?? drag.previewTrackId;
     const canPlace = canPlaceClipOnTrack(drag.clip, targetTrackId);
     const resolvedStart = canPlace
-      ? resolveStartInTrack(targetTrackId, drag.clipId, drag.clip.duration, snapped.startFrame)
+      ? resolveStartInTrack(targetTrackId, drag.clipId, drag.clip.duration, visualStart)
       : null;
     setDrag((prev) =>
       prev
         ? {
             ...prev,
-            previewTrackId: resolvedStart != null ? targetTrackId : prev.previewTrackId,
-            previewStartFrame: resolvedStart ?? prev.previewStartFrame,
-            snappedFrame: resolvedStart != null && resolvedStart === snapped.startFrame ? snapped.snappedFrame : null,
+            previewTrackId: targetTrackId,
+            previewStartFrame: visualStart,
+            commitStartFrame: resolvedStart,
+            snappedFrame: resolvedStart != null ? snapped.snappedFrame : null,
             isDropValid: resolvedStart != null,
           }
         : prev,
@@ -644,7 +663,10 @@ export const Timeline: React.FC<TimelineProps> = ({
       return;
     }
 
-    const movedClip: Clip = { ...drag.clip, startFrame: drag.previewStartFrame };
+    const movedClip: Clip = {
+      ...drag.clip,
+      startFrame: drag.commitStartFrame ?? drag.previewStartFrame,
+    };
     const hasPreviewTrack = tracks.some((track) => track.id === drag.previewTrackId);
     const workingTracks = hasPreviewTrack
       ? tracks

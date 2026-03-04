@@ -73,6 +73,7 @@ export type DragState = {
   startClientX: number;
   originFrame: number;
   previewStartFrame: number;
+  commitStartFrame: number | null;
   snappedFrame: number | null;
   isDropValid: boolean;
 };
