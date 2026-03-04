@@ -76,10 +76,15 @@ export type TimelineProps = {
   onBlankAreaPointerDown?: (time: number, event: ReactPointerEvent<HTMLDivElement>) => void;
   onRulerDoubleClick?: (time: number, event: ReactMouseEvent<HTMLCanvasElement>) => void;
   onBlankAreaDoubleClick?: (time: number, event: ReactMouseEvent<HTMLDivElement>) => void;
+  onSelectionChange?: (selection: Selection) => void;
 };
 
 export type TimelineRef = {
   fitToContent: (options?: { paddingPx?: number }) => void;
+  splitAtPlayhead: () => void;
+  trimLeftToPlayhead: () => void;
+  trimRightToPlayhead: () => void;
+  deleteSelectedClip: () => void;
 };
 
 export type DragState = {

@@ -74,6 +74,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
   onBlankAreaPointerDown,
   onRulerDoubleClick,
   onBlankAreaDoubleClick,
+  onSelectionChange,
 }, ref) => {
   const isSourceBoundAction = useCallback((action: TimelineAction) => {
     return action.kind === "video" || action.kind === "audio";
@@ -94,6 +95,13 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
   const [pendingDrag, setPendingDrag] = useState<PendingDragState | null>(null);
   const [trim, setTrim] = useState<TrimState | null>(null);
   const [selection, setSelection] = useState<Selection>(null);
+  const updateSelection = useCallback(
+    (next: Selection) => {
+      setSelection(next);
+      onSelectionChange?.(next);
+    },
+    [onSelectionChange],
+  );
 
   const zoom = clamp(controlledZoom ?? uncontrolledZoom, minZoom, maxZoom);
   const contentBounds = useMemo(() => {
@@ -549,8 +557,8 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
       return { ...item, actions };
     });
     onEditorDataChange(next);
-    setSelection({ rowId: row.id, actionId: rightAction.id });
-  }, [createSplitActionId, editorData, getSelectedActionContext, onEditorDataChange]);
+    updateSelection({ rowId: row.id, actionId: rightAction.id });
+  }, [createSplitActionId, editorData, getSelectedActionContext, onEditorDataChange, updateSelection]);
 
   const trimSelectedClipLeftToPlayhead = useCallback(() => {
     const ctx = getSelectedActionContext();
@@ -595,6 +603,21 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     });
     onEditorDataChange(next);
   }, [editorData, getSelectedActionContext, onEditorDataChange]);
+
+  const deleteSelectedClip = useCallback(() => {
+    if (!selection || !onEditorDataChange) return;
+    const next = editorData
+      .map((row) => {
+        if (row.id !== selection.rowId) return row;
+        return {
+          ...row,
+          actions: row.actions.filter((action) => action.id !== selection.actionId),
+        };
+      })
+      .filter((row) => !(row.role !== "main" && row.actions.length === 0));
+    onEditorDataChange(next);
+    updateSelection(null);
+  }, [editorData, onEditorDataChange, selection, updateSelection]);
 
   const getValidStartIntervals = useCallback(
     (rowId: string, actionId: string, actionDuration: number): Array<[number, number]> => {
@@ -695,7 +718,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     if (trim) return;
     event.preventDefault();
     (event.currentTarget as HTMLDivElement).setPointerCapture(event.pointerId);
-    setSelection({ rowId, actionId: action.id });
+    updateSelection({ rowId, actionId: action.id });
     setPendingDrag({
       rowId,
       action,
@@ -841,7 +864,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     event.preventDefault();
     event.stopPropagation();
     (event.currentTarget as HTMLDivElement).setPointerCapture(event.pointerId);
-    setSelection({ rowId, actionId: action.id });
+    updateSelection({ rowId, actionId: action.id });
     setTrim({
       rowId,
       actionId: action.id,
@@ -973,8 +996,18 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     ref,
     () => ({
       fitToContent,
+      splitAtPlayhead: splitSelectedClipAtPlayhead,
+      trimLeftToPlayhead: trimSelectedClipLeftToPlayhead,
+      trimRightToPlayhead: trimSelectedClipRightToPlayhead,
+      deleteSelectedClip,
     }),
-    [fitToContent],
+    [
+      deleteSelectedClip,
+      fitToContent,
+      splitSelectedClipAtPlayhead,
+      trimSelectedClipLeftToPlayhead,
+      trimSelectedClipRightToPlayhead,
+    ],
   );
 
   const zoomAroundTime = useCallback(
@@ -1075,7 +1108,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
       onWheel={onWheelZoom}
       onKeyDown={onRootKeyDown}
       onPointerDown={(event) => {
-        if (event.target === event.currentTarget) setSelection(null);
+        if (event.target === event.currentTarget) updateSelection(null);
       }}
     >
       <canvas ref={canvasRef} className="timeline-bg-canvas" />
@@ -1114,7 +1147,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
         onPointerDownCapture={(event) => {
           const target = event.target as HTMLElement;
           if (!target.closest("[data-clip-id]")) {
-            setSelection(null);
+            updateSelection(null);
             onBlankAreaPointerDown?.(timeFromClientX(event.clientX), event);
           }
         }}
@@ -1156,7 +1189,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
                     onPointerUp={onClipPointerUp}
                     onClick={(event) => {
                       event.stopPropagation();
-                      setSelection({ rowId: row.id, actionId: action.id });
+                      updateSelection({ rowId: row.id, actionId: action.id });
                     }}
                     onTrimPointerDown={(event, side) => onTrimPointerDown(event, row.id, action, side)}
                     onTrimPointerMove={onTrimPointerMove}

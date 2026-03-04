@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Timeline, type TimelineRef } from "./timeline/Timeline";
 import type { TimelineAction, TimelineRow } from "./timeline/model";
+import type { Selection } from "./timeline/types";
 import { formatTimeWithMs } from "./timeline/utils";
 import "./App.css";
 
@@ -17,6 +18,7 @@ const TRACK_HEIGHT_PRESETS = {
   text: 40,
   solid: 40,
 };
+const MIN_EDIT_DURATION = 0.04;
 
 const a = (data: TimelineAction): TimelineAction => data;
 
@@ -151,6 +153,27 @@ export default function App() {
   const [trimSnapToTimelineTicks, setTrimSnapToTimelineTicks] = useState(false);
   const [trimSnapToClipEdges, setTrimSnapToClipEdges] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [selection, setSelection] = useState<Selection>(null);
+
+  const selectedAction = useMemo(() => {
+    if (!selection) return null;
+    const row = editorData.find((item) => item.id === selection.rowId);
+    if (!row) return null;
+    return row.actions.find((item) => item.id === selection.actionId) ?? null;
+  }, [editorData, selection]);
+
+  const canTrimToPlayhead = useMemo(() => {
+    if (!selectedAction) return false;
+    return time > selectedAction.start && time < selectedAction.end;
+  }, [selectedAction, time]);
+  const canDeleteSelected = useMemo(() => Boolean(selectedAction), [selectedAction]);
+
+  const canSplitAtPlayhead = useMemo(() => {
+    if (!selectedAction) return false;
+    const left = time - selectedAction.start;
+    const right = selectedAction.end - time;
+    return left > MIN_EDIT_DURATION && right > MIN_EDIT_DURATION;
+  }, [selectedAction, time]);
 
   const currentTime = useMemo(() => formatTimeWithMs(time), [time]);
   const onBlankAreaPointerDown = useCallback((nextTime: number) => {
@@ -279,6 +302,43 @@ export default function App() {
               Clip Edges
             </label>
           </fieldset>
+
+          <fieldset className="control-group">
+            <legend>Edit</legend>
+            <button
+              type="button"
+              className="ghost-btn"
+              disabled={!canTrimToPlayhead}
+              onClick={() => timelineRef.current?.trimLeftToPlayhead()}
+            >
+              Trim Left
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              disabled={!canSplitAtPlayhead}
+              onClick={() => timelineRef.current?.splitAtPlayhead()}
+            >
+              Split
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              disabled={!canTrimToPlayhead}
+              onClick={() => timelineRef.current?.trimRightToPlayhead()}
+            >
+              Trim Right
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              disabled={!canDeleteSelected}
+              onClick={() => timelineRef.current?.deleteSelectedClip()}
+            >
+              Delete
+            </button>
+          </fieldset>
+
           <fieldset className="control-group control-group-zoom">
             <legend>Zoom</legend>
             <button
@@ -342,21 +402,10 @@ export default function App() {
           onRulerPointerDown={handleSeekFromRulerPointerDown}
           onBlankAreaPointerDown={onBlankAreaPointerDown}
           onRulerDoubleClick={handleSeekFromRulerDoubleClick}
+          onSelectionChange={setSelection}
         />
       </section>
 
-      <section className="snippet">
-        <h2>Usage</h2>
-        <pre>
-          {`<Timeline
-  editorData={rows}
-  duration={120}
-  playing={playing}
-  currentTime={time}
-  onTimeChange={setTime}
-/>`}
-        </pre>
-      </section>
     </div>
   );
 }

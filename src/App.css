@@ -126,6 +126,13 @@ body {
   color: #dbeafe;
 }
 
+.primary-btn:disabled,
+.ghost-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+}
+
 .meta-group {
   display: flex;
   align-items: center;
