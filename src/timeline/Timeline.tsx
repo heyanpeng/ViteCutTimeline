@@ -474,6 +474,103 @@ export const Timeline: React.FC<TimelineProps> = ({
     [tracks],
   );
 
+  const getSelectedClipContext = useCallback(() => {
+    if (!selection) return null;
+    const trackIndex = tracks.findIndex((track) => track.id === selection.trackId);
+    if (trackIndex < 0) return null;
+    const track = tracks[trackIndex];
+    const clipIndex = track.clips.findIndex((clip) => clip.id === selection.clipId);
+    if (clipIndex < 0) return null;
+    const clip = track.clips[clipIndex];
+    const playheadFrame = Math.floor(currentFrameRef.current);
+    const clipEnd = getClipEnd(clip);
+    if (playheadFrame <= clip.startFrame || playheadFrame >= clipEnd) return null;
+    return { trackIndex, track, clipIndex, clip, playheadFrame, clipEnd };
+  }, [selection, tracks]);
+
+  const createSplitClipId = useCallback(
+    (track: Track, baseId: string) => {
+      const existing = new Set(track.clips.map((clip) => clip.id));
+      let index = 1;
+      let nextId = `${baseId}-split-${index}`;
+      while (existing.has(nextId)) {
+        index += 1;
+        nextId = `${baseId}-split-${index}`;
+      }
+      return nextId;
+    },
+    [],
+  );
+
+  const splitSelectedClipAtPlayhead = useCallback(() => {
+    const ctx = getSelectedClipContext();
+    if (!ctx || !onTracksChange) return;
+    const { trackIndex, track, clipIndex, clip, playheadFrame, clipEnd } = ctx;
+    const leftDuration = playheadFrame - clip.startFrame;
+    const rightDuration = clipEnd - playheadFrame;
+    if (leftDuration <= 0 || rightDuration <= 0) return;
+
+    const rightClip: Clip = {
+      ...clip,
+      id: createSplitClipId(track, clip.id),
+      startFrame: playheadFrame,
+      displayStart: clip.displayStart + leftDuration,
+      duration: rightDuration,
+    };
+    const leftClip: Clip = { ...clip, duration: leftDuration };
+
+    const next = tracks.map((item, index) => {
+      if (index !== trackIndex) return item;
+      const clips = [...item.clips];
+      clips.splice(clipIndex, 1, leftClip, rightClip);
+      return { ...item, clips };
+    });
+    onTracksChange(next);
+    setSelection({ trackId: track.id, clipId: rightClip.id });
+  }, [createSplitClipId, getSelectedClipContext, onTracksChange, tracks]);
+
+  const trimSelectedClipLeftToPlayhead = useCallback(() => {
+    const ctx = getSelectedClipContext();
+    if (!ctx || !onTracksChange) return;
+    const { trackIndex, clipIndex, clip, playheadFrame, clipEnd } = ctx;
+    if (playheadFrame <= clip.startFrame || playheadFrame >= clipEnd) return;
+
+    const next = tracks.map((item, index) => {
+      if (index !== trackIndex) return item;
+      const clips = item.clips.map((current, currentIndex) => {
+        if (currentIndex !== clipIndex) return current;
+        return {
+          ...current,
+          startFrame: playheadFrame,
+          displayStart: current.displayStart + (playheadFrame - current.startFrame),
+          duration: clipEnd - playheadFrame,
+        };
+      });
+      return { ...item, clips };
+    });
+    onTracksChange(next);
+  }, [getSelectedClipContext, onTracksChange, tracks]);
+
+  const trimSelectedClipRightToPlayhead = useCallback(() => {
+    const ctx = getSelectedClipContext();
+    if (!ctx || !onTracksChange) return;
+    const { trackIndex, clipIndex, clip, playheadFrame } = ctx;
+    if (playheadFrame <= clip.startFrame) return;
+
+    const next = tracks.map((item, index) => {
+      if (index !== trackIndex) return item;
+      const clips = item.clips.map((current, currentIndex) => {
+        if (currentIndex !== clipIndex) return current;
+        return {
+          ...current,
+          duration: playheadFrame - current.startFrame,
+        };
+      });
+      return { ...item, clips };
+    });
+    onTracksChange(next);
+  }, [getSelectedClipContext, onTracksChange, tracks]);
+
   const getValidStartIntervals = useCallback(
     (trackId: string, clipId: string, duration: number): Array<[number, number]> => {
       const others = getOtherTrackClips(trackId, clipId);
@@ -907,11 +1004,37 @@ export const Timeline: React.FC<TimelineProps> = ({
     scrubbingPointerIdRef.current = null;
   };
 
+  const onRootKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "b") {
+        event.preventDefault();
+        splitSelectedClipAtPlayhead();
+        return;
+      }
+      if (event.key === "[") {
+        event.preventDefault();
+        trimSelectedClipLeftToPlayhead();
+        return;
+      }
+      if (event.key === "]") {
+        event.preventDefault();
+        trimSelectedClipRightToPlayhead();
+      }
+    },
+    [
+      splitSelectedClipAtPlayhead,
+      trimSelectedClipLeftToPlayhead,
+      trimSelectedClipRightToPlayhead,
+    ],
+  );
+
   return (
     <div
       ref={rootRef}
       className="timeline-root"
+      tabIndex={0}
       onWheel={onWheelZoom}
+      onKeyDown={onRootKeyDown}
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) setSelection(null);
       }}

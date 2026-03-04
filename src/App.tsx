@@ -275,7 +275,7 @@ const createDemoTracks = (): Track[] => [
         id: "vu-a-1",
         startFrame: 80,
         displayStart: 0,
-        duration: 170,
+        duration: 90,
         layer: 0,
         kind: "video",
         title: "B-roll 01",
@@ -484,7 +484,7 @@ export default function App() {
   const [zoom, setZoom] = useState(1);
 
   const currentTime = useMemo(() => (frame / FPS).toFixed(2), [frame]);
-  const handleSeekFromBlankDoubleClick = useCallback((nextFrame: number) => {
+  const onBlankAreaPointerDown = useCallback((nextFrame: number) => {
     setFrame(nextFrame);
   }, []);
   const handleSeekFromRulerPointerDown = useCallback((nextFrame: number) => {
@@ -505,7 +505,7 @@ export default function App() {
         <div className="demo-header-row">
           <div>
             <p className="demo-badge">Open Source Demo</p>
-            <h1>Timeline Component Playground</h1>
+            <h1>VitCut Timeline Playground</h1>
           </div>
           <a
             className="github-link"
@@ -665,7 +665,7 @@ export default function App() {
           onPlayingChange={setPlaying}
           onZoomChange={setZoom}
           onRulerPointerDown={handleSeekFromRulerPointerDown}
-          onBlankAreaDoubleClick={handleSeekFromBlankDoubleClick}
+          onBlankAreaPointerDown={onBlankAreaPointerDown}
           onRulerDoubleClick={handleSeekFromRulerDoubleClick}
         />
       </section>
