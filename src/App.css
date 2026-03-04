@@ -16,6 +16,10 @@ body,
 }
 
 body {
+  padding: 20px;
+}
+
+body {
   background:
     radial-gradient(circle at 10% -10%, #1f2b45 0%, transparent 40%),
     radial-gradient(circle at 100% 0%, #1b2f3a 0%, transparent 38%), #0b111b;
@@ -23,7 +27,7 @@ body {
 
 .demo-page {
   width: min(1280px, 96vw);
-  margin: 20px auto 28px;
+  margin: 0 auto;
 }
 
 .demo-header {
