@@ -166,7 +166,10 @@ export default function App() {
     if (!selectedAction) return false;
     return time > selectedAction.start && time < selectedAction.end;
   }, [selectedAction, time]);
-  const canDeleteSelected = useMemo(() => Boolean(selectedAction), [selectedAction]);
+  const canDeleteSelected = useMemo(
+    () => Boolean(selectedAction),
+    [selectedAction],
+  );
 
   const canSplitAtPlayhead = useMemo(() => {
     if (!selectedAction) return false;
@@ -405,7 +408,6 @@ export default function App() {
           onSelectionChange={setSelection}
         />
       </section>
-
     </div>
   );
 }
