@@ -82,7 +82,6 @@ export const Timeline: React.FC<TimelineProps> = ({
   const scrubbingPointerIdRef = useRef<number | null>(null);
   const currentFrameRef = useRef(initialFrame);
   const rafRef = useRef<number | null>(null);
-  const pendingCreateTrackIdRef = useRef<string | null>(null);
 
   const [uncontrolledZoom, setUncontrolledZoom] = useState(1);
   const [viewport, setViewport] = useState({ width: 0, height: 0, scrollLeft: 0, scrollTop: 0 });
@@ -165,6 +164,7 @@ export const Timeline: React.FC<TimelineProps> = ({
       viewportWidth: viewport.width,
       viewportHeight: viewport.height,
       scrollLeft: viewport.scrollLeft,
+      scrollTop: viewport.scrollTop,
       zoom,
       fps,
       totalFrames,
@@ -172,7 +172,7 @@ export const Timeline: React.FC<TimelineProps> = ({
       showHorizontalLines,
       trackLayouts,
     });
-  }, [fps, showHorizontalLines, showMinorTicks, totalFrames, trackLayouts, viewport.height, viewport.scrollLeft, viewport.width, zoom]);
+  }, [fps, showHorizontalLines, showMinorTicks, totalFrames, trackLayouts, viewport.height, viewport.scrollLeft, viewport.scrollTop, viewport.width, zoom]);
 
   const drawRuler = useCallback(() => {
     if (!rulerCanvasRef.current) return;
@@ -181,12 +181,13 @@ export const Timeline: React.FC<TimelineProps> = ({
       viewportWidth: viewport.width,
       viewportHeight: viewport.height,
       scrollLeft: viewport.scrollLeft,
+      scrollTop: viewport.scrollTop,
       zoom,
       fps,
       totalFrames,
       showMinorTicks,
     });
-  }, [fps, showMinorTicks, totalFrames, viewport.height, viewport.scrollLeft, viewport.width, zoom]);
+  }, [fps, showMinorTicks, totalFrames, viewport.height, viewport.scrollLeft, viewport.scrollTop, viewport.width, zoom]);
 
   const updatePlayheadPosition = useCallback(
     (frame: number) => {
@@ -372,30 +373,6 @@ export const Timeline: React.FC<TimelineProps> = ({
     [trackLayouts, tracks.length],
   );
 
-  useEffect(() => {
-    const pendingId = pendingCreateTrackIdRef.current;
-    if (!pendingId) return;
-    if (tracks.some((track) => track.id === pendingId)) {
-      pendingCreateTrackIdRef.current = null;
-    }
-  }, [tracks]);
-
-  const createTrackFromId = useCallback(
-    (id: string, clipKind?: Clip["kind"]): Track => {
-      const match = id.match(/(\d+)$/);
-      const index = match ? Number(match[1]) : tracks.length + 1;
-      const role = clipKind === "audio" ? "audio" : "normal";
-      return {
-        id,
-        name: `Track ${index}`,
-        role,
-        height: getDefaultTrackHeight(role, clipKind),
-        clips: [],
-      };
-    },
-    [getDefaultTrackHeight, tracks.length],
-  );
-
   const createNextTrack = useCallback((clipKind?: Clip["kind"]): Track => {
     const existingIds = new Set(tracks.map((track) => track.id));
     let index = tracks.length + 1;
@@ -413,6 +390,19 @@ export const Timeline: React.FC<TimelineProps> = ({
       clips: [],
     };
   }, [getDefaultTrackHeight, tracks]);
+
+  const canCreateTrackAtIndex = useCallback(
+    (clip: Clip, index: number) => {
+      const movingKind = clip.kind ?? "video";
+      if (movingKind === "audio") {
+        if (mainTrackIndex < 0) return true;
+        return index > mainTrackIndex;
+      }
+      if (mainTrackIndex < 0) return true;
+      return index <= mainTrackIndex;
+    },
+    [mainTrackIndex],
+  );
 
   const canPlaceClipOnTrack = useCallback(
     (clip: Clip, targetTrackId: string) => {
@@ -443,26 +433,34 @@ export const Timeline: React.FC<TimelineProps> = ({
     [mainTrackIndex, trackIndexMap, tracks],
   );
 
-  const maybeAppendTrackForDrag = useCallback(
+  const getInsertTrackCandidate = useCallback(
     (clientY: number, clip: Clip) => {
       const scrollEl = scrollRef.current;
-      if (!scrollEl || !onTracksChange) return null;
-      if ((clip.kind ?? "video") !== "audio") return null;
+      if (!scrollEl) return null;
       const rect = scrollEl.getBoundingClientRect();
       const contentY = clientY - rect.top + scrollEl.scrollTop;
-      const lastTrackBottom = trackLayouts.length > 0 ? trackLayouts[trackLayouts.length - 1].bottom : RULER_HEIGHT;
-      if (contentY <= lastTrackBottom + CREATE_TRACK_GAP_PX) return null;
+      const threshold = Math.max(4, CREATE_TRACK_GAP_PX / 2);
 
-      if (pendingCreateTrackIdRef.current) {
-        return pendingCreateTrackIdRef.current;
+      for (let i = 0; i < trackLayouts.length - 1; i += 1) {
+        const mid = (trackLayouts[i].bottom + trackLayouts[i + 1].top) / 2;
+        if (Math.abs(contentY - mid) <= threshold) {
+          const index = i + 1;
+          if (!canCreateTrackAtIndex(clip, index)) return null;
+          return { index, lineY: mid };
+        }
       }
 
-      const newTrack = createNextTrack(clip.kind);
-      pendingCreateTrackIdRef.current = newTrack.id;
-      onTracksChange([...tracks, newTrack]);
-      return newTrack.id;
+      if (trackLayouts.length > 0) {
+        const last = trackLayouts[trackLayouts.length - 1];
+        const endLine = last.bottom + Math.max(2, trackGap / 2);
+        if (contentY > last.bottom + CREATE_TRACK_GAP_PX && canCreateTrackAtIndex(clip, tracks.length)) {
+          return { index: tracks.length, lineY: endLine };
+        }
+      }
+
+      return null;
     },
-    [createNextTrack, onTracksChange, trackLayouts, tracks],
+    [canCreateTrackAtIndex, trackGap, trackLayouts, tracks.length],
   );
 
   const getOtherTrackClips = useCallback(
@@ -595,6 +593,8 @@ export const Timeline: React.FC<TimelineProps> = ({
       setDrag({
         originTrackId: pendingDrag.trackId,
         previewTrackId: pendingDrag.trackId,
+        insertTrackIndex: null,
+        insertLineY: null,
         clipId: pendingDrag.clip.id,
         clip: pendingDrag.clip,
         pointerId: pendingDrag.pointerId,
@@ -631,19 +631,23 @@ export const Timeline: React.FC<TimelineProps> = ({
     const deltaFrame = Math.round(pixelToFrame(dx, zoom));
     const proposed = clamp(drag.originFrame + deltaFrame, 0, totalFrames - drag.clip.duration);
     const snapped = snapFrame(drag.clipId, proposed, drag.clip.duration);
-    const visualStart = snapped.startFrame;
-    const newTrackId = maybeAppendTrackForDrag(event.clientY, drag.clip);
-    const targetTrackId = newTrackId ?? getTrackIdByClientY(event.clientY) ?? drag.previewTrackId;
+    const visualStart = clamp(snapped.startFrame, 0, totalFrames - drag.clip.duration);
+    const insertCandidate = getInsertTrackCandidate(event.clientY, drag.clip);
+    const targetTrackId = getTrackIdByClientY(event.clientY) ?? drag.previewTrackId;
     const canPlace = canPlaceClipOnTrack(drag.clip, targetTrackId);
-    const resolvedStart = canPlace
-      ? resolveStartInTrack(targetTrackId, drag.clipId, drag.clip.duration, visualStart)
-      : null;
+    const resolvedStart = insertCandidate
+      ? visualStart
+      : canPlace
+        ? resolveStartInTrack(targetTrackId, drag.clipId, drag.clip.duration, visualStart)
+        : null;
     setDrag((prev) =>
       prev
         ? {
             ...prev,
             previewTrackId: targetTrackId,
             previewStartFrame: visualStart,
+            insertTrackIndex: insertCandidate?.index ?? null,
+            insertLineY: insertCandidate?.lineY ?? null,
             commitStartFrame: resolvedStart,
             snappedFrame: resolvedStart != null ? snapped.snappedFrame : null,
             isDropValid: resolvedStart != null,
@@ -667,12 +671,21 @@ export const Timeline: React.FC<TimelineProps> = ({
       ...drag.clip,
       startFrame: drag.commitStartFrame ?? drag.previewStartFrame,
     };
-    const hasPreviewTrack = tracks.some((track) => track.id === drag.previewTrackId);
-    const workingTracks = hasPreviewTrack
-      ? tracks
-      : [...tracks, createTrackFromId(drag.previewTrackId, drag.clip.kind)];
+    const insertedTrack =
+      drag.insertTrackIndex != null
+        ? createNextTrack(drag.clip.kind)
+        : null;
+    const workingTracks =
+      insertedTrack && drag.insertTrackIndex != null
+        ? (() => {
+            const nextTracks = [...tracks];
+            nextTracks.splice(drag.insertTrackIndex, 0, insertedTrack);
+            return nextTracks;
+          })()
+        : tracks;
+    const finalPreviewTrackId = insertedTrack?.id ?? drag.previewTrackId;
     const next = workingTracks.map((track) => {
-      if (track.id === drag.originTrackId && drag.originTrackId === drag.previewTrackId) {
+      if (track.id === drag.originTrackId && drag.originTrackId === finalPreviewTrackId) {
         return {
           ...track,
           clips: track.clips.map((clip) => (clip.id === drag.clipId ? movedClip : clip)),
@@ -681,14 +694,23 @@ export const Timeline: React.FC<TimelineProps> = ({
       if (track.id === drag.originTrackId) {
         return { ...track, clips: track.clips.filter((clip) => clip.id !== drag.clipId) };
       }
-      if (track.id === drag.previewTrackId) {
+      if (track.id === finalPreviewTrackId) {
         return { ...track, clips: [...track.clips, movedClip] };
       }
       return track;
     });
-
-    onTracksChange?.(next);
-    pendingCreateTrackIdRef.current = null;
+    const shouldDeleteEmptyOriginTrack = drag.originTrackId !== finalPreviewTrackId;
+    const finalizedTracks = shouldDeleteEmptyOriginTrack
+      ? next.filter(
+          (track) =>
+            !(
+              track.id === drag.originTrackId &&
+              track.clips.length === 0 &&
+              track.role !== "main"
+            ),
+        )
+      : next;
+    onTracksChange?.(finalizedTracks);
     setDrag(null);
   };
 
@@ -993,6 +1015,13 @@ export const Timeline: React.FC<TimelineProps> = ({
               isDropValid={drag.isDropValid}
               onPointerMove={onClipPointerMove}
               onPointerUp={onClipPointerUp}
+            />
+          )}
+
+          {drag?.insertLineY != null && (
+            <div
+              className="timeline-insert-line"
+              style={{ transform: `translateY(${drag.insertLineY}px)` }}
             />
           )}
 

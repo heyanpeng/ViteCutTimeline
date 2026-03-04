@@ -336,17 +336,10 @@ const createDemoTracks = (): Track[] => [
     ],
   },
   {
-    id: "video-upper-empty",
-    name: "Video Empty",
-    role: "normal",
-    height: 50,
-    clips: [],
-  },
-  {
     id: "video-main",
     name: "Video Main",
     role: "main",
-    height: 60,
+    height: 70,
     clips: [
       {
         id: "v1",

@@ -96,6 +96,16 @@
   z-index: 3;
 }
 
+.timeline-insert-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #38bdf8;
+  z-index: 4;
+  pointer-events: none;
+}
+
 .timeline-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(100, 116, 139, 0.62) rgba(17, 24, 39, 0.45);

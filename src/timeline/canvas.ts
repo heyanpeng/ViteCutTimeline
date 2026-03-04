@@ -7,6 +7,7 @@ type CommonDraw = {
   viewportWidth: number;
   viewportHeight: number;
   scrollLeft: number;
+  scrollTop: number;
   zoom: number;
   fps: number;
   totalFrames: number;
@@ -18,6 +19,7 @@ export const drawTimelineCanvas = ({
   viewportWidth,
   viewportHeight,
   scrollLeft,
+  scrollTop,
   zoom,
   fps,
   totalFrames,
@@ -51,11 +53,14 @@ export const drawTimelineCanvas = ({
   if (showHorizontalLines) {
     ctx.strokeStyle = "#1c2028";
     ctx.lineWidth = 1;
-    for (let i = 1; i < trackLayouts.length; i += 1) {
-      const y = trackLayouts[i].top + 0.5;
+    for (let i = 0; i < trackLayouts.length - 1; i += 1) {
+      const current = trackLayouts[i];
+      const next = trackLayouts[i + 1];
+      const gapCenterY = (current.bottom + next.top) / 2 - scrollTop + 0.5;
+      if (gapCenterY < -1 || gapCenterY > height + 1) continue;
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
+      ctx.moveTo(0, gapCenterY);
+      ctx.lineTo(width, gapCenterY);
       ctx.stroke();
     }
   }
@@ -77,6 +82,7 @@ export const drawRulerCanvas = ({
   canvas,
   viewportWidth,
   scrollLeft,
+  scrollTop: _scrollTop,
   zoom,
   fps,
   totalFrames,
@@ -135,4 +141,3 @@ export const drawRulerCanvas = ({
     ctx.fillText(label, textX, 2);
   }
 };
-

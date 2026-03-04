@@ -67,6 +67,8 @@ export type TimelineProps = {
 export type DragState = {
   originTrackId: string;
   previewTrackId: string;
+  insertTrackIndex: number | null;
+  insertLineY: number | null;
   clipId: string;
   clip: Clip;
   pointerId: number;
