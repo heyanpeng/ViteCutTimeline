@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://heyanpeng.github.io/ViteCutTimeline/sitemap.xml
