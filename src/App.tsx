@@ -168,6 +168,8 @@ export default function App() {
   );
   // 拖动时吸附clip边缘
   const [dragSnapToClipEdges, setDragSnapToClipEdges] = useState(true);
+  // 拖动时吸附时间线刻度
+  const [dragSnapToTimelineTicks, setDragSnapToTimelineTicks] = useState(true);
   // 裁剪时吸附时间线刻度
   const [trimSnapToTimelineTicks, setTrimSnapToTimelineTicks] = useState(true);
   // 裁剪时吸附clip边缘
@@ -693,6 +695,14 @@ export default function App() {
               />
               Clip Edges
             </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={dragSnapToTimelineTicks}
+                onChange={(e) => setDragSnapToTimelineTicks(e.target.checked)}
+              />
+              Timeline Ticks
+            </label>
           </fieldset>
 
           <fieldset className="control-group">
@@ -798,6 +808,8 @@ export default function App() {
           // trimSnapTickMode={"major"}
           // 拖拽时吸附到素材边缘
           dragSnapToClipEdges={dragSnapToClipEdges}
+          // 拖拽时吸附到时间线刻度
+          dragSnapToTimelineTicks={dragSnapToTimelineTicks}
           // 裁剪时吸附到素材边缘
           trimSnapToClipEdges={trimSnapToClipEdges}
           // 最小缩放比例

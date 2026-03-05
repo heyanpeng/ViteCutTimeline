@@ -60,6 +60,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
       showMinorTicks = true,
       showHorizontalLines = true,
       dragSnapToClipEdges = true,
+      dragSnapToTimelineTicks = false,
       trimSnapToClipEdges = true,
       trimSnapToTimelineTicks = true,
       trimSnapThresholdPx = SNAP_PX,
@@ -525,11 +526,23 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
             }
           }
         }
+        if (dragSnapToTimelineTicks) {
+          const tick = getTickStepSeconds(timeToPixel(1, zoom));
+          const step = tick.minor;
+          for (const edge of movingEdges) {
+            const nearestTick = clamp(Math.round(edge / step) * step, 0, duration);
+            const delta = nearestTick - edge;
+            if (Math.abs(delta) > thresholdTime) continue;
+            if (!best || Math.abs(delta) < Math.abs(best.delta)) {
+              best = { delta, time: nearestTick };
+            }
+          }
+        }
         if (!best)
           return { start: proposedStart, snappedTime: null as number | null };
         return { start: proposedStart + best.delta, snappedTime: best.time };
       },
-      [dragSnapToClipEdges, editorData, zoom],
+      [dragSnapToClipEdges, dragSnapToTimelineTicks, duration, editorData, zoom],
     );
 
     const getTrackIdByClientY = useCallback(

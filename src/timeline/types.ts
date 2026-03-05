@@ -82,6 +82,8 @@ export type TimelineProps = {
   showHorizontalLines?: boolean;
   /** 拖拽移动clip时，是否吸附到其他clip的边缘 */
   dragSnapToClipEdges?: boolean;
+  /** 拖拽移动clip时，是否吸附到时间线刻度 */
+  dragSnapToTimelineTicks?: boolean;
   /** 裁剪clip时，是否吸附到其他clip的边缘 */
   trimSnapToClipEdges?: boolean;
   /** 裁剪clip时，是否吸附到时间线刻度 */
