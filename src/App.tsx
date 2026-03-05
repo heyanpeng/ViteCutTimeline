@@ -170,9 +170,9 @@ export default function App() {
   // 拖动时吸附clip边缘
   const [dragSnapToClipEdges, setDragSnapToClipEdges] = useState(true);
   // 裁剪时吸附时间线刻度
-  const [trimSnapToTimelineTicks, setTrimSnapToTimelineTicks] = useState(false);
+  const [trimSnapToTimelineTicks, setTrimSnapToTimelineTicks] = useState(true);
   // 裁剪时吸附clip边缘
-  const [trimSnapToClipEdges, setTrimSnapToClipEdges] = useState(false);
+  const [trimSnapToClipEdges, setTrimSnapToClipEdges] = useState(true);
   // 缩放
   const [zoom, setZoom] = useState(1);
   // 选中clip或行
@@ -577,6 +577,10 @@ export default function App() {
           showHorizontalLines={showHorizontalLines}
           // 裁剪时吸附到时间线刻度
           trimSnapToTimelineTicks={trimSnapToTimelineTicks}
+          // 裁剪时吸附阈值（像素）
+          // trimSnapThresholdPx={SNAP_PX}
+          // 裁剪时吸附刻度模式（minor/major）
+          // trimSnapTickMode={"major"}
           // 拖拽时吸附到素材边缘
           dragSnapToClipEdges={dragSnapToClipEdges}
           // 裁剪时吸附到素材边缘

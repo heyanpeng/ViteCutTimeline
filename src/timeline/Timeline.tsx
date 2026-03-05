@@ -765,23 +765,41 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(({
   );
 
   const snapTrimEdgeTime = useCallback(
-    (rowId: string, actionId: string, movingTime: number) => {
+    (
+      rowId: string,
+      actionId: string,
+      movingTime: number,
+      limits?: { min: number; max: number },
+    ) => {
       const threshold = pixelToTime(trimSnapThresholdPx, zoom);
       let bestTime: number | null = null;
       let bestDistance = Number.POSITIVE_INFINITY;
+      let hasClipEdgeCandidate = false;
+      const minLimit = limits?.min ?? 0;
+      const maxLimit = limits?.max ?? duration;
+      const isInRange = (time: number) => time >= minLimit && time <= maxLimit;
 
       if (trimSnapToClipEdges) {
-        const others = getOtherTrackActions(rowId, actionId);
-        for (const action of others) {
-          const candidates = [action.start, action.end];
-          for (const candidate of candidates) {
-            const distance = Math.abs(candidate - movingTime);
-            if (distance <= threshold && distance < bestDistance) {
-              bestDistance = distance;
-              bestTime = candidate;
+        editorData.forEach((row) => {
+          row.actions.forEach((action) => {
+            if (row.id === rowId && action.id === actionId) return;
+            const candidates = [action.start, action.end];
+            for (const candidate of candidates) {
+              if (!isInRange(candidate)) continue;
+              const distance = Math.abs(candidate - movingTime);
+              if (distance <= threshold && distance < bestDistance) {
+                bestDistance = distance;
+                bestTime = candidate;
+                hasClipEdgeCandidate = true;
+              }
             }
-          }
-        }
+          });
+        });
+      }
+
+      if (hasClipEdgeCandidate) {
+        const snapped = bestTime ?? movingTime;
+        return { time: snapped, snappedTime: snapped };
       }
 
       if (trimSnapToTimelineTicks) {
@@ -790,6 +808,10 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(({
         const step = trimSnapTickMode === "major" ? tick.major : tick.minor;
         const nearestTick = Math.round(movingTime / step) * step;
         const clampedTick = clamp(nearestTick, 0, duration);
+        if (!isInRange(clampedTick)) {
+          if (bestTime == null) return { time: movingTime, snappedTime: null as number | null };
+          return { time: bestTime, snappedTime: bestTime };
+        }
         const distance = Math.abs(clampedTick - movingTime);
         if (distance <= threshold && distance < bestDistance) {
           bestDistance = distance;
@@ -802,6 +824,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(({
     },
     [
       duration,
+      editorData,
       getOtherTrackActions,
       trimSnapThresholdPx,
       trimSnapTickMode,
@@ -1031,9 +1054,12 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(({
       const maxDelta = getActionDuration(trim.origin) - MIN_ACTION_DURATION;
       const delta = clamp(deltaTime, minDelta, maxDelta);
       const proposedStart = trim.origin.start + delta;
-      const snapped = snapTrimEdgeTime(trim.rowId, trim.actionId, proposedStart);
       const minStart = trim.origin.start + minDelta;
       const maxStart = trim.origin.start + maxDelta;
+      const snapped = snapTrimEdgeTime(trim.rowId, trim.actionId, proposedStart, {
+        min: minStart,
+        max: maxStart,
+      });
       const finalStart = clamp(snapped.time, minStart, maxStart);
       const row = editorData.find((item) => item.id === trim.rowId);
       if (
@@ -1075,9 +1101,12 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(({
     const maxDelta = Math.min(maxByTimeline, maxByNeighbor);
     const delta = clamp(deltaTime, minDelta, maxDelta);
     const proposedEnd = trim.origin.end + delta;
-    const snapped = snapTrimEdgeTime(trim.rowId, trim.actionId, proposedEnd);
     const minEnd = trim.origin.end + minDelta;
     const maxEnd = trim.origin.end + maxDelta;
+    const snapped = snapTrimEdgeTime(trim.rowId, trim.actionId, proposedEnd, {
+      min: minEnd,
+      max: maxEnd,
+    });
     const finalEnd = clamp(snapped.time, minEnd, maxEnd);
     const row = editorData.find((item) => item.id === trim.rowId);
     if (
