@@ -244,70 +244,122 @@ export interface TimelineState {
   setScrollTop: (val: number) => void;
 }
 
+/** 轨道控制状态类型 */
 export type TrackControlState = {
+  /** 是否锁定轨道 */
   locked: boolean;
+  /** 是否隐藏轨道 */
   hidden: boolean;
+  /** 是否静音轨道 */
   muted: boolean;
 };
 
+/** 轨道控制支持的操作类型 */
 export type TrackControlActions = {
+  /** 切换锁定状态 */
   toggleLock: () => void;
+  /** 切换隐藏状态 */
   toggleHide: () => void;
+  /** 切换静音状态 */
   toggleMute: () => void;
+  /** 删除轨道 */
   deleteTrack: () => void;
 };
 
+/** 轨道控制渲染参数类型 */
 export type TrackControlRenderParams = {
+  /** 当前轨道对象 */
   row: TimelineRow;
+  /** 当前轨道的控制状态 */
   state: TrackControlState;
+  /** 当前轨道支持的操作 */
   actions: TrackControlActions;
+  /** 是否为主轨道 */
   isMainTrack: boolean;
 };
 
+/** 拖拽时的状态类型 */
 export type DragState = {
+  /** 起始拖动轨道的id */
   originRowId: string;
+  /** 当前拖拽预览的轨道id */
   previewRowId: string;
+  /** 插入轨道索引，null表示未插入 */
   insertRowIndex: number | null;
+  /** 插入线条的Y坐标，null表示未显示 */
   insertLineY: number | null;
+  /** 拖拽的动作id */
   actionId: string;
+  /** 拖拽的动作对象 */
   action: TimelineAction;
+  /** 拖拽使用的指针id */
   pointerId: number;
+  /** 起始指针的clientX坐标 */
   startClientX: number;
+  /** 动作原本的开始时间 */
   originStart: number;
+  /** 拖拽过程中的预览开始时间 */
   previewStart: number;
+  /** 用户真正提交拖拽时的开始时间，null为未提交 */
   commitStart: number | null;
+  /** 吸附到的时间点，为null表示未吸附 */
   snappedTime: number | null;
+  /** 当前拖拽目标是否合法 */
   isDropValid: boolean;
 };
 
+/** 拖拽待处理状态类型（还未判定是否合法时） */
 export type PendingDragState = {
+  /** 当前拖拽的轨道id */
   rowId: string;
+  /** 拖拽的动作对象 */
   action: TimelineAction;
+  /** 拖拽指针id */
   pointerId: number;
+  /** 起始clientX */
   startClientX: number;
+  /** 起始clientY */
   startClientY: number;
 };
 
+/** 裁剪（变更clip长度）时的状态类型 */
 export type TrimState = {
+  /** 轨道id */
   rowId: string;
+  /** 被裁剪动作的id */
   actionId: string;
+  /** 裁剪的方向（左/右） */
   side: "left" | "right";
+  /** 裁剪指针id */
   pointerId: number;
+  /** 起始指针clientX坐标 */
   startClientX: number;
+  /** 裁剪前的动作（原始对象） */
   origin: TimelineAction;
+  /** 裁剪中的预览动作（即时对象） */
   preview: TimelineAction;
+  /** 当前边界吸附到的时间，null为未吸附 */
   snappedTime: number | null;
 };
 
+/** 时间轴选中项的数据类型（行与动作） */
 export type Selection = {
+  /** 轨道id */
   rowId: string;
+  /** 动作id */
   actionId: string;
 } | null;
 
+/** 单个轨道的布局信息 */
 export type TrackLayout = {
+  /** 轨道id */
   id: string;
+  /** 轨道顺序索引 */
   index: number;
+  /** 距离顶部的像素 */
   top: number;
+  /** 轨道高度 */
   height: number;
+  /** 底部的像素 */
   bottom: number;
 };
