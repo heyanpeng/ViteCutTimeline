@@ -591,6 +591,8 @@ export default function App() {
           trackGap={TRACK_GAP}
           // 轨道高度预设
           trackHeightPresets={TRACK_HEIGHT_PRESETS}
+          // 缩放变化回调（用于Ctrl/Cmd+滚轮缩放时回写外部状态）
+          onZoomChange={setZoom}
           // 拖拽移动过程中：若轨道已锁定则直接阻止移动
           onActionMoving={handleActionMoving}
           // 拖拽移动 clip 结束后：写回 start/end（若轨道未锁定）
