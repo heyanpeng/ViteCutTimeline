@@ -133,7 +133,36 @@ body {
 
 .play-btn {
   width: 84px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   text-align: center;
+}
+
+.play-btn-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.play-btn-paused {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #eff6ff;
+}
+
+.play-btn-playing {
+  background: #0f766e;
+  border-color: #0d5f58;
+  color: #ecfeff;
+}
+
+.play-btn-playing:hover {
+  background: #115e59;
+}
+
+.play-btn-paused:hover {
+  background: #1d4ed8;
 }
 
 .ghost-btn {

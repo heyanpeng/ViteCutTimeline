@@ -972,10 +972,13 @@ export default function App() {
         <div className="panel-row">
           <button
             type="button"
-            className="primary-btn play-btn"
+            className={`primary-btn play-btn ${playing ? "play-btn-playing" : "play-btn-paused"}`}
             onClick={() => setPlaying((v) => !v)}
           >
-            {playing ? "Pause" : "Play"}
+            <span className="play-btn-icon" aria-hidden="true">
+              {playing ? "⏸" : "▶"}
+            </span>
+            <span>{playing ? "Pause" : "Play"}</span>
           </button>
           <button
             type="button"

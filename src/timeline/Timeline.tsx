@@ -292,6 +292,19 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
     }, [currentTime, setCurrentTime]);
 
     useEffect(() => {
+      if (!playing || currentTime == null) return;
+      const scrollEl = scrollRef.current;
+      if (!scrollEl) return;
+      const playheadX = timeToPixel(currentTime, zoom);
+      const viewLeft = scrollEl.scrollLeft;
+      const viewRight = viewLeft + scrollEl.clientWidth;
+      if (playheadX <= viewRight) return;
+      const targetLeft = Math.max(0, playheadX);
+      if (Math.abs(targetLeft - scrollEl.scrollLeft) < 1) return;
+      scrollEl.scrollLeft = targetLeft;
+    }, [currentTime, playing, zoom]);
+
+    useEffect(() => {
       const root = rootRef.current;
       const scrollEl = scrollRef.current;
       if (!root || !scrollEl) return;
@@ -436,7 +449,11 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
           const tick = getTickStepSeconds(timeToPixel(1, zoom));
           const step = tick.minor;
           for (const edge of movingEdges) {
-            const nearestTick = clamp(Math.round(edge / step) * step, 0, duration);
+            const nearestTick = clamp(
+              Math.round(edge / step) * step,
+              0,
+              duration,
+            );
             const delta = nearestTick - edge;
             if (Math.abs(delta) > thresholdTime) continue;
             if (!best || Math.abs(delta) < Math.abs(best.delta)) {
@@ -448,7 +465,13 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
           return { start: proposedStart, snappedTime: null as number | null };
         return { start: proposedStart + best.delta, snappedTime: best.time };
       },
-      [dragSnapToClipEdges, dragSnapToTimelineTicks, duration, editorData, zoom],
+      [
+        dragSnapToClipEdges,
+        dragSnapToTimelineTicks,
+        duration,
+        editorData,
+        zoom,
+      ],
     );
 
     const getTrackIdByClientY = useCallback(
@@ -647,7 +670,9 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
         return;
 
       const sourceIn = Number(action.inPoint ?? 0);
-      const sourceOut = Number(action.outPoint ?? sourceIn + getActionDuration(action));
+      const sourceOut = Number(
+        action.outPoint ?? sourceIn + getActionDuration(action),
+      );
 
       const rightAction: TimelineAction = {
         ...action,
@@ -1014,7 +1039,9 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
               insertRowIndex: canMoveByCallback
                 ? (insertCandidate?.index ?? null)
                 : null,
-              insertLineY: canMoveByCallback ? (insertCandidate?.lineY ?? null) : null,
+              insertLineY: canMoveByCallback
+                ? (insertCandidate?.lineY ?? null)
+                : null,
               commitStart: canMoveByCallback ? resolvedStart : null,
               snappedTime:
                 canMoveByCallback && resolvedStart != null
@@ -1148,9 +1175,9 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
           if (action.end <= fixedEnd && action.end > maxEnd) return action.end;
           return maxEnd;
         }, 0);
-      const sourceBoundMinDelta = isSourceBoundAction(trim.origin)
-        ? -Number(trim.origin.inPoint ?? 0)
-        : Number.NEGATIVE_INFINITY;
+        const sourceBoundMinDelta = isSourceBoundAction(trim.origin)
+          ? -Number(trim.origin.inPoint ?? 0)
+          : Number.NEGATIVE_INFINITY;
         const minDelta = Math.max(
           sourceBoundMinDelta,
           -trim.origin.start,
@@ -1429,7 +1456,9 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
           className="timeline-track-panel"
           style={{ width: trackControlsWidth }}
         >
-          <div className="timeline-track-panel-header">{trackPanelHeaderNode}</div>
+          <div className="timeline-track-panel-header">
+            {trackPanelHeaderNode}
+          </div>
           <div className="timeline-track-panel-body">
             {trackLayouts.map((layout) => {
               const row = editorData[layout.index];
@@ -1443,10 +1472,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
               return (
                 <div
                   key={row.id}
-                  className={[
-                    "timeline-track-row",
-                    ...rowClassNames,
-                  ]
+                  className={["timeline-track-row", ...rowClassNames]
                     .filter(Boolean)
                     .join(" ")}
                   style={{ top, height: layout.height }}
@@ -1553,7 +1579,9 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
               {visibleTracks.map((row) => {
                 const layout = trackLayoutMap.get(row.id);
                 if (!layout) return null;
-                const isRowHidden = Boolean((row as { hidden?: unknown }).hidden);
+                const isRowHidden = Boolean(
+                  (row as { hidden?: unknown }).hidden,
+                );
                 if (!isRowHidden) return null;
                 return (
                   <div
@@ -1566,7 +1594,9 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
               {visibleTracks.map((row) => {
                 const layout = trackLayoutMap.get(row.id);
                 if (!layout) return null;
-                const isRowLocked = Boolean((row as { locked?: unknown }).locked);
+                const isRowLocked = Boolean(
+                  (row as { locked?: unknown }).locked,
+                );
                 if (!isRowLocked) return null;
                 return (
                   <div
@@ -1587,7 +1617,9 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
                     const isSelected =
                       selection?.rowId === row.id &&
                       selection.actionId === action.id;
-                    const isDimmed = Boolean((row as { hidden?: unknown }).hidden);
+                    const isDimmed = Boolean(
+                      (row as { hidden?: unknown }).hidden,
+                    );
                     const renderAction = isTrimmedClip ? trim.preview : action;
                     const left = timeToPixel(renderAction.start, zoom);
                     const width = Math.max(
@@ -1601,11 +1633,11 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
 
                     return (
                       <ClipItem
-                      key={action.id}
-                      clip={action}
-                      renderClip={renderAction}
-                      content={getActionRender?.(renderAction, row)}
-                      left={left}
+                        key={action.id}
+                        clip={action}
+                        renderClip={renderAction}
+                        content={getActionRender?.(renderAction, row)}
+                        left={left}
                         top={top}
                         width={width}
                         height={actionHeight}
@@ -1660,39 +1692,40 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
                 </React.Fragment>
               ))}
 
-              {drag && (
+              {drag &&
                 (() => {
                   const previewRow =
                     editorData.find((row) => row.id === drag.previewRowId) ??
                     editorData.find((row) => row.id === drag.originRowId) ??
                     editorData[0];
                   const previewContent = previewRow
-                    ? getActionDragRender?.(drag.action, previewRow) ??
-                      getActionRender?.(drag.action, previewRow)
+                    ? (getActionDragRender?.(drag.action, previewRow) ??
+                      getActionRender?.(drag.action, previewRow))
                     : undefined;
                   return (
-                <DragPreview
-                  clip={drag.action}
-                  content={previewContent}
-                  left={timeToPixel(drag.previewStart, zoom)}
-                  top={
-                    trackLayoutMap.get(drag.previewRowId)?.top ?? RULER_HEIGHT
-                  }
-                  width={Math.max(
-                    2,
-                    timeToPixel(getActionDuration(drag.action), zoom),
-                  )}
-                  height={Math.max(
-                    14,
-                    trackLayoutMap.get(drag.previewRowId)?.height ?? rowHeight,
-                  )}
-                  isDropValid={drag.isDropValid}
-                  onPointerMove={onClipPointerMove}
-                  onPointerUp={onClipPointerUp}
-                />
+                    <DragPreview
+                      clip={drag.action}
+                      content={previewContent}
+                      left={timeToPixel(drag.previewStart, zoom)}
+                      top={
+                        trackLayoutMap.get(drag.previewRowId)?.top ??
+                        RULER_HEIGHT
+                      }
+                      width={Math.max(
+                        2,
+                        timeToPixel(getActionDuration(drag.action), zoom),
+                      )}
+                      height={Math.max(
+                        14,
+                        trackLayoutMap.get(drag.previewRowId)?.height ??
+                          rowHeight,
+                      )}
+                      isDropValid={drag.isDropValid}
+                      onPointerMove={onClipPointerMove}
+                      onPointerUp={onClipPointerUp}
+                    />
                   );
-                })()
-              )}
+                })()}
 
               {drag?.insertLineY != null && (
                 <div
