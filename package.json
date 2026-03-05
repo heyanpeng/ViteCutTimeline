@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
-    "deploy:github": "gh-pages -d dist -r https://github.com/heyanpeng/ViteCutTimeline.git"
+    "deploy:github": "npm run build && gh-pages -d dist -r https://github.com/heyanpeng/ViteCutTimeline.git"
   },
   "dependencies": {
     "react": "^18.3.1",
