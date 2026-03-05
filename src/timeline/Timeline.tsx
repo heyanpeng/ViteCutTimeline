@@ -1437,10 +1437,18 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
               const top = layout.top - RULER_HEIGHT - viewport.scrollTop;
               if (top + layout.height < -8 || top > viewport.height + 8)
                 return null;
+              const rowClassNames = Array.isArray(row.classNames)
+                ? row.classNames.filter(Boolean)
+                : [];
               return (
                 <div
                   key={row.id}
-                  className="timeline-track-row"
+                  className={[
+                    "timeline-track-row",
+                    ...rowClassNames,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   style={{ top, height: layout.height }}
                 >
                   {renderTrackControlContent(row)}
@@ -1542,6 +1550,19 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
               className="timeline-content"
               style={{ width: totalContentWidth, height: totalHeight }}
             >
+              {visibleTracks.map((row) => {
+                const layout = trackLayoutMap.get(row.id);
+                if (!layout) return null;
+                const isRowHidden = Boolean((row as { hidden?: unknown }).hidden);
+                if (!isRowHidden) return null;
+                return (
+                  <div
+                    key={`${row.id}-dim-overlay`}
+                    className="timeline-row-dim-overlay"
+                    style={{ top: layout.top, height: layout.height }}
+                  />
+                );
+              })}
               {visibleTracks.map((row) => (
                 <React.Fragment key={row.id}>
                   {row.actions.map((action) => {
@@ -1553,7 +1574,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
                     const isSelected =
                       selection?.rowId === row.id &&
                       selection.actionId === action.id;
-                    const isDimmed = false;
+                    const isDimmed = Boolean((row as { hidden?: unknown }).hidden);
                     const renderAction = isTrimmedClip ? trim.preview : action;
                     const left = timeToPixel(renderAction.start, zoom);
                     const width = Math.max(

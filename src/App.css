@@ -262,6 +262,15 @@ body {
   background: rgba(19, 27, 40, 0.62);
 }
 
+.timeline-row-dim-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: rgba(10, 14, 22, 0.48);
+  pointer-events: none;
+  z-index: 2;
+}
+
 .timeline-track-controls {
   display: inline-flex;
   align-items: center;
