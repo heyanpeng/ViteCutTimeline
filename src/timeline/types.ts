@@ -105,8 +105,8 @@ export type TimelineProps = {
   trackHeightPresets?: TrackHeightPresets;
   /** 轨道控制区宽度（像素，默认184） */
   trackControlsWidth?: number;
-  /** 轨道控制区渲染函数 */
-  renderTrackControls?: (params: TrackControlRenderParams) => ReactNode;
+  /** 轨道控制区渲染函数（纯渲染，控制逻辑由外部处理） */
+  renderTrackControls?: (row: TimelineRow) => ReactNode;
   /** 自定义action区域渲染 */
   getActionRender?: (action: TimelineAction, row: TimelineRow) => ReactNode;
   /** 自定义拖拽预览渲染 */
@@ -250,40 +250,6 @@ export interface TimelineState {
   /** 设置scroll top */
   setScrollTop: (val: number) => void;
 }
-
-/** 轨道控制状态类型 */
-export type TrackControlState = {
-  /** 是否锁定轨道 */
-  locked: boolean;
-  /** 是否隐藏轨道 */
-  hidden: boolean;
-  /** 是否静音轨道 */
-  muted: boolean;
-};
-
-/** 轨道控制支持的操作类型 */
-export type TrackControlActions = {
-  /** 切换锁定状态 */
-  toggleLock: () => void;
-  /** 切换隐藏状态 */
-  toggleHide: () => void;
-  /** 切换静音状态 */
-  toggleMute: () => void;
-  /** 删除轨道 */
-  deleteTrack: () => void;
-};
-
-/** 轨道控制渲染参数类型 */
-export type TrackControlRenderParams = {
-  /** 当前轨道对象 */
-  row: TimelineRow;
-  /** 当前轨道的控制状态 */
-  state: TrackControlState;
-  /** 当前轨道支持的操作 */
-  actions: TrackControlActions;
-  /** 是否为主轨道 */
-  isMainTrack: boolean;
-};
 
 /** 拖拽时的状态类型 */
 export type DragState = {

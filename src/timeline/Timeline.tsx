@@ -26,7 +26,6 @@ import type {
   PendingDragState,
   Selection,
   TimelineAction,
-  TrackControlRenderParams,
   TimelineProps,
   TimelineRow,
   TimelineState,
@@ -129,45 +128,11 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
     );
     const [trim, setTrim] = useState<TrimState | null>(null);
     const [selection, setSelection] = useState<Selection>(null);
-    const [lockedRows, setLockedRows] = useState<Record<string, boolean>>({});
-    const [hiddenRows, setHiddenRows] = useState<Record<string, boolean>>({});
-    const [mutedRows, setMutedRows] = useState<Record<string, boolean>>({});
     const updateSelection = useCallback((next: Selection) => {
       setSelection(next);
     }, []);
-    const toggleRowLock = useCallback((rowId: string) => {
-      setLockedRows((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
-    }, []);
-    const toggleRowHide = useCallback((rowId: string) => {
-      setHiddenRows((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
-    }, []);
-    const toggleRowMute = useCallback((rowId: string) => {
-      setMutedRows((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
-    }, []);
-    const deleteTrackById = useCallback(
-      (rowId: string) => {
-        if (!onEditorDataChange) return;
-        const target = editorData.find((row) => row.id === rowId);
-        if (!target || target.role === "main") return;
-        onEditorDataChange(editorData.filter((row) => row.id !== rowId));
-        if (selection?.rowId === rowId) updateSelection(null);
-      },
-      [editorData, onEditorDataChange, selection?.rowId, updateSelection],
-    );
 
     const zoom = clamp(controlledZoom ?? uncontrolledZoom, minZoom, maxZoom);
-    const isRowLocked = useCallback(
-      (rowId: string) => Boolean(lockedRows[rowId]),
-      [lockedRows],
-    );
-    const isRowHidden = useCallback(
-      (rowId: string) => Boolean(hiddenRows[rowId]),
-      [hiddenRows],
-    );
-    const isRowMuted = useCallback(
-      (rowId: string) => Boolean(mutedRows[rowId]),
-      [mutedRows],
-    );
     const contentBounds = useMemo(() => {
       let minStart = Number.POSITIVE_INFINITY;
       let maxEnd = 0;
@@ -982,7 +947,6 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
     ) => {
       if (event.button !== 0) return;
       if (trim) return;
-      if (isRowLocked(rowId)) return;
       event.preventDefault();
       isDragWhenClickRef.current = false;
       (event.currentTarget as HTMLDivElement).setPointerCapture(
@@ -1205,7 +1169,6 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
       side: "left" | "right",
     ) => {
       if (event.button !== 0) return;
-      if (isRowLocked(rowId)) return;
       event.preventDefault();
       event.stopPropagation();
       (event.currentTarget as HTMLDivElement).setPointerCapture(
@@ -1497,78 +1460,10 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
 
     const renderTrackControlContent = useCallback(
       (row: TimelineRow) => {
-        const isMainTrack = row.role === "main";
-        const state = {
-          locked: isRowLocked(row.id),
-          hidden: isRowHidden(row.id),
-          muted: isRowMuted(row.id),
-        };
-        const actions = {
-          toggleLock: () => toggleRowLock(row.id),
-          toggleHide: () => toggleRowHide(row.id),
-          toggleMute: () => toggleRowMute(row.id),
-          deleteTrack: () => deleteTrackById(row.id),
-        };
-
-        if (renderTrackControls) {
-          return renderTrackControls({
-            row,
-            state,
-            actions,
-            isMainTrack,
-          } satisfies TrackControlRenderParams);
-        }
-
-        return (
-          <div className="timeline-track-controls">
-            <button
-              type="button"
-              className={`timeline-track-btn${state.locked ? " active" : ""}`}
-              onClick={actions.toggleLock}
-              title={state.locked ? "Unlock Track" : "Lock Track"}
-            >
-              {state.locked ? "🔒" : "🔓"}
-            </button>
-            <button
-              type="button"
-              className={`timeline-track-btn${state.hidden ? " active" : ""}`}
-              onClick={actions.toggleHide}
-              title={state.hidden ? "Show Track" : "Hide Track"}
-            >
-              {state.hidden ? "🙈" : "👁"}
-            </button>
-            <button
-              type="button"
-              className={`timeline-track-btn${state.muted ? " active" : ""}`}
-              onClick={actions.toggleMute}
-              title={state.muted ? "Unmute Track" : "Mute Track"}
-            >
-              {state.muted ? "🔇" : "🔊"}
-            </button>
-            <button
-              type="button"
-              className="timeline-track-btn danger"
-              disabled={isMainTrack}
-              onClick={actions.deleteTrack}
-              title={
-                isMainTrack ? "Main Track cannot be deleted" : "Delete Track"
-              }
-            >
-              🗑
-            </button>
-          </div>
-        );
+        if (!renderTrackControls) return null;
+        return renderTrackControls(row);
       },
-      [
-        deleteTrackById,
-        isRowHidden,
-        isRowLocked,
-        isRowMuted,
-        renderTrackControls,
-        toggleRowHide,
-        toggleRowLock,
-        toggleRowMute,
-      ],
+      [renderTrackControls],
     );
 
     return (
@@ -1594,13 +1489,10 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
               const top = layout.top - RULER_HEIGHT - viewport.scrollTop;
               if (top + layout.height < -8 || top > viewport.height + 8)
                 return null;
-              const isMainTrack = row.role === "main";
-              const hidden = isRowHidden(row.id);
-              const locked = isRowLocked(row.id);
               return (
                 <div
                   key={row.id}
-                  className={`timeline-track-row${hidden ? " track-hidden" : ""}${locked ? " track-locked" : ""}`}
+                  className="timeline-track-row"
                   style={{ top, height: layout.height }}
                 >
                   {renderTrackControlContent(row)}
@@ -1713,7 +1605,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
                     const isSelected =
                       selection?.rowId === row.id &&
                       selection.actionId === action.id;
-                    const isDimmed = isRowHidden(row.id);
+                    const isDimmed = false;
                     const renderAction = isTrimmedClip ? trim.preview : action;
                     const left = timeToPixel(renderAction.start, zoom);
                     const width = Math.max(

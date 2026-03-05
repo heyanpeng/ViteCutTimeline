@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Timeline } from "./timeline/Timeline";
 import type { Selection, TimelineAction, TimelineRow } from "./timeline/types";
 import { formatTimeWithMs } from "./timeline/utils";
@@ -18,6 +18,11 @@ const TRACK_HEIGHT_PRESETS = {
   solid: 40,
 };
 const MIN_EDIT_DURATION = 0.04;
+type RowControlState = {
+  locked: boolean;
+  hidden: boolean;
+  muted: boolean;
+};
 
 /**
  * 简单地返回action自身
@@ -178,6 +183,26 @@ export default function App() {
   const [zoom, setZoom] = useState(1);
   // 选中clip或行
   const [selection, setSelection] = useState<Selection>(null);
+  // 轨道控制状态（外部管理）
+  const [rowControls, setRowControls] = useState<Record<string, RowControlState>>({});
+
+  // 清理已删除轨道的控制状态
+  useEffect(() => {
+    const existingIds = new Set(editorData.map((row) => row.id));
+    setRowControls((prev) => {
+      const next: Record<string, RowControlState> = {};
+      Object.entries(prev).forEach(([rowId, state]) => {
+        if (existingIds.has(rowId)) next[rowId] = state;
+      });
+      return next;
+    });
+  }, [editorData]);
+
+  const getRowControlState = useCallback(
+    (rowId: string): RowControlState =>
+      rowControls[rowId] ?? { locked: false, hidden: false, muted: false },
+    [rowControls],
+  );
 
   /**
    * 根据selection找出选中的action
@@ -469,7 +494,7 @@ export default function App() {
    * @returns {boolean}
    */
   const handleActionMoving = useCallback(
-    (_params: {
+    (params: {
       action: TimelineAction;
       row: TimelineRow;
       start: number;
@@ -477,9 +502,14 @@ export default function App() {
       targetRowId?: string;
       insertRowIndex?: number | null;
     }) => {
+      // 锁定轨道禁止移动（源轨道或目标轨道）
+      if (getRowControlState(params.row.id).locked) return false;
+      if (params.targetRowId && getRowControlState(params.targetRowId).locked) {
+        return false;
+      }
       return true;
     },
-    [],
+    [getRowControlState],
   );
 
   /**
@@ -496,6 +526,7 @@ export default function App() {
       insertRowIndex?: number | null;
     }) => {
       const { action, row, start, end, targetRowId, insertRowIndex } = params;
+      if (getRowControlState(row.id).locked) return;
       setEditorData((prev) => {
         const originIndex = prev.findIndex((track) => track.id === row.id);
         if (originIndex < 0) return prev;
@@ -562,7 +593,7 @@ export default function App() {
       });
       setSelection({ rowId: targetRowId ?? row.id, actionId: action.id });
     },
-    [],
+    [getRowControlState],
   );
 
   /**
@@ -571,16 +602,17 @@ export default function App() {
    * @returns {boolean}
    */
   const handleActionResizing = useCallback(
-    (_params: {
+    (params: {
       action: TimelineAction;
       row: TimelineRow;
       start: number;
       end: number;
       dir: "right" | "left";
     }) => {
+      if (getRowControlState(params.row.id).locked) return false;
       return true;
     },
-    [],
+    [getRowControlState],
   );
 
   /**
@@ -596,6 +628,7 @@ export default function App() {
       dir: "right" | "left";
     }) => {
       const { action, row, start, end, dir } = params;
+      if (getRowControlState(row.id).locked) return;
       setEditorData((prev) =>
         prev.map((track) => {
           if (track.id !== row.id) return track;
@@ -611,7 +644,7 @@ export default function App() {
         }),
       );
     },
-    [],
+    [getRowControlState],
   );
 
   /**
@@ -727,6 +760,75 @@ export default function App() {
       </>
     );
   }, []);
+  const renderTrackControls = useCallback(
+    (row: TimelineRow) => {
+      const state = getRowControlState(row.id);
+      const role = (row as { role?: unknown }).role;
+      const isMainTrack = role === "main";
+      return (
+        <div className="timeline-track-controls">
+          <button
+            type="button"
+            className={`timeline-track-btn${state.locked ? " active" : ""}`}
+            onClick={() =>
+              setRowControls((prev) => ({
+                ...prev,
+                [row.id]: { ...getRowControlState(row.id), locked: !state.locked },
+              }))
+            }
+            title={state.locked ? "Unlock Track" : "Lock Track"}
+          >
+            {state.locked ? "🔒" : "🔓"}
+          </button>
+          <button
+            type="button"
+            className={`timeline-track-btn${state.hidden ? " active" : ""}`}
+            onClick={() =>
+              setRowControls((prev) => ({
+                ...prev,
+                [row.id]: { ...getRowControlState(row.id), hidden: !state.hidden },
+              }))
+            }
+            title={state.hidden ? "Show Track" : "Hide Track"}
+          >
+            {state.hidden ? "🙈" : "👁"}
+          </button>
+          <button
+            type="button"
+            className={`timeline-track-btn${state.muted ? " active" : ""}`}
+            onClick={() =>
+              setRowControls((prev) => ({
+                ...prev,
+                [row.id]: { ...getRowControlState(row.id), muted: !state.muted },
+              }))
+            }
+            title={state.muted ? "Unmute Track" : "Mute Track"}
+          >
+            {state.muted ? "🔇" : "🔊"}
+          </button>
+          <button
+            type="button"
+            className="timeline-track-btn danger"
+            disabled={isMainTrack}
+            onClick={() => {
+              if (isMainTrack) return;
+              setEditorData((prev) => prev.filter((track) => track.id !== row.id));
+              setRowControls((prev) => {
+                const next = { ...prev };
+                delete next[row.id];
+                return next;
+              });
+              if (selection?.rowId === row.id) setSelection(null);
+            }}
+            title={isMainTrack ? "Main Track cannot be deleted" : "Delete Track"}
+          >
+            🗑
+          </button>
+        </div>
+      );
+    },
+    [getRowControlState, selection?.rowId],
+  );
 
   return (
     <div className="demo-page">
@@ -946,10 +1048,6 @@ export default function App() {
           showHorizontalLines={showHorizontalLines}
           // 裁剪时吸附到时间线刻度
           trimSnapToTimelineTicks={trimSnapToTimelineTicks}
-          // 裁剪时吸附阈值（像素）
-          // trimSnapThresholdPx={SNAP_PX}
-          // 裁剪时吸附刻度模式（minor/major）
-          // trimSnapTickMode={"major"}
           // 拖拽时吸附到素材边缘
           dragSnapToClipEdges={dragSnapToClipEdges}
           // 拖拽时吸附到时间线刻度
@@ -966,6 +1064,8 @@ export default function App() {
           trackGap={TRACK_GAP}
           // 轨道高度预设
           trackHeightPresets={TRACK_HEIGHT_PRESETS}
+          // 轨道控制区逻辑在外部实现（先不影响轨道样式）
+          renderTrackControls={renderTrackControls}
           // 自定义action渲染（业务样式在外部实现）
           getActionRender={getActionRender}
           // 缩放变化回调（用于Ctrl/Cmd+滚轮缩放时回写外部状态）
