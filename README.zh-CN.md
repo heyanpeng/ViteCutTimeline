@@ -96,27 +96,6 @@ npm install
 npm run dev
 ```
 
-## 发布到 npm
-
-```bash
-# 1) 在仓库根目录构建包产物
-npm run build:lib
-
-# 2) 进入包目录
-cd packages/timeline
-
-# 3) 检查发布内容
-npm pack --dry-run
-
-# 4) 登录并发布
-npm login
-npm publish --access public
-```
-
-说明：
-- 包名为 `@vitecut/timeline`（scope 公有包）。
-- 入口产物位于 `dist-lib`（`index.mjs`、`index.cjs`、`index.d.ts`、`style.css`）。
-
 ## 贡献
 
 欢迎提交 Issue 和 PR。

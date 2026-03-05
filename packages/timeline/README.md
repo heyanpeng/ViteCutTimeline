@@ -96,27 +96,6 @@ npm install
 npm run dev
 ```
 
-## Publish To npm
-
-```bash
-# 1) build package artifacts (from repo root)
-npm run build:lib
-
-# 2) go to package directory
-cd packages/timeline
-
-# 3) verify package contents
-npm pack --dry-run
-
-# 4) login and publish
-npm login
-npm publish --access public
-```
-
-Notes:
-- Package name is `@vitecut/timeline` (scoped public package).
-- Entry points are exported from `dist-lib` (`index.mjs`, `index.cjs`, `index.d.ts`, `style.css`).
-
 ## Contributing
 
 Issues and PRs are welcome.
