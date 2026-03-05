@@ -987,6 +987,16 @@ export default function App() {
           >
             Jump To Start
           </button>
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={() => {
+              setPlaying(false);
+              setTime(playbackEnd);
+            }}
+          >
+            Jump To End
+          </button>
           <div className="meta-group">
             <span className="meta-item">Time {currentTime}</span>
             <span className="meta-item">Progress {timeProgress}%</span>
