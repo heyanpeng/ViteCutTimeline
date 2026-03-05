@@ -72,11 +72,16 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
   onActionMoveStart,
   onActionMoving,
   onActionMoveEnd,
+  onActionResizeStart,
+  onActionResizing,
+  onActionResizeEnd,
   onEditorDataChange,
-  onTimeChange,
+  onCursorDragStart,
+  onCursorDragEnd,
+  onCursorDrag,
   onPlayingChange,
   onZoomChange,
-  onRulerPointerDown,
+  onClickTimeArea,
   onBlankAreaPointerDown,
   onRulerDoubleClick,
   onBlankAreaDoubleClick,
@@ -344,14 +349,14 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
 
       if (Math.abs(nextTime - lastReported) >= 0.01) {
         lastReported = nextTime;
-        onTimeChange?.(nextTime);
+        onCursorDrag?.(nextTime);
       }
 
       if (nextTime >= playbackEnd) {
         if (playEndBehavior === "loop" && playbackEnd > 0) {
           currentTimeRef.current = 0;
           updatePlayheadPosition(0);
-          onTimeChange?.(0);
+          onCursorDrag?.(0);
           rafRef.current = requestAnimationFrame(loop);
         } else {
           onPlayingChange?.(false);
@@ -367,7 +372,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
       rafRef.current = null;
       lastTime = 0;
     };
-  }, [lastActionEnd, onPlayingChange, onTimeChange, playEndBehavior, playing, updatePlayheadPosition]);
+  }, [lastActionEnd, onCursorDrag, onPlayingChange, playEndBehavior, playing, updatePlayheadPosition]);
 
   const snapStartTime = useCallback(
     (actionId: string, proposedStart: number, actionDuration: number) => {
@@ -924,6 +929,14 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     event.stopPropagation();
     (event.currentTarget as HTMLDivElement).setPointerCapture(event.pointerId);
     updateSelection({ rowId, actionId: action.id });
+    const row = editorData.find((item) => item.id === rowId);
+    if (row) {
+      onActionResizeStart?.({
+        action,
+        row,
+        dir: side,
+      });
+    }
     setTrim({
       rowId,
       actionId: action.id,
@@ -958,6 +971,19 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
       const minStart = trim.origin.start + minDelta;
       const maxStart = trim.origin.start + maxDelta;
       const finalStart = clamp(snapped.time, minStart, maxStart);
+      const row = editorData.find((item) => item.id === trim.rowId);
+      if (
+        row &&
+        onActionResizing?.({
+          action: trim.origin,
+          row,
+          start: finalStart,
+          end: fixedEnd,
+          dir: "left",
+        }) === false
+      ) {
+        return;
+      }
       setTrim((prev) =>
         prev
           ? {
@@ -989,6 +1015,19 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     const minEnd = trim.origin.end + minDelta;
     const maxEnd = trim.origin.end + maxDelta;
     const finalEnd = clamp(snapped.time, minEnd, maxEnd);
+    const row = editorData.find((item) => item.id === trim.rowId);
+    if (
+      row &&
+      onActionResizing?.({
+        action: trim.origin,
+        row,
+        start: trim.origin.start,
+        end: finalEnd,
+        dir: "right",
+      }) === false
+    ) {
+      return;
+    }
     setTrim((prev) =>
       prev
         ? {
@@ -1006,6 +1045,17 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
 
   const onTrimPointerUp = (event: PointerEvent<HTMLDivElement>) => {
     if (!trim || trim.pointerId !== event.pointerId) return;
+    const row = editorData.find((item) => item.id === trim.rowId);
+    const action = row?.actions.find((item) => item.id === trim.actionId);
+    if (row && action) {
+      onActionResizeEnd?.({
+        action,
+        row,
+        start: trim.preview.start,
+        end: trim.preview.end,
+        dir: trim.side,
+      });
+    }
     const next = editorData.map((row) => {
       if (row.id !== trim.rowId) return row;
       return {
@@ -1115,9 +1165,18 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
       const time = timeFromClientX(clientX);
       currentTimeRef.current = time;
       updatePlayheadPosition(time);
-      onTimeChange?.(time);
+      onCursorDrag?.(time);
     },
-    [onTimeChange, timeFromClientX, updatePlayheadPosition],
+    [onCursorDrag, timeFromClientX, updatePlayheadPosition],
+  );
+  const dispatchTimeAreaClick = useCallback(
+    (time: number, event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+      if (onClickTimeArea?.(time, event) === false) return;
+      currentTimeRef.current = time;
+      updatePlayheadPosition(time);
+      onCursorDrag?.(time);
+    },
+    [onClickTimeArea, onCursorDrag, updatePlayheadPosition],
   );
 
   const onPlayheadPointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -1127,6 +1186,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     (event.currentTarget as HTMLDivElement).setPointerCapture(event.pointerId);
     scrubbingPointerIdRef.current = event.pointerId;
     seekToClientX(event.clientX);
+    onCursorDragStart?.(currentTimeRef.current);
   };
 
   const onPlayheadPointerMove = (event: PointerEvent<HTMLDivElement>) => {
@@ -1137,6 +1197,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
   const onPlayheadPointerUp = (event: PointerEvent<HTMLDivElement>) => {
     if (scrubbingPointerIdRef.current !== event.pointerId) return;
     scrubbingPointerIdRef.current = null;
+    onCursorDragEnd?.(currentTimeRef.current);
   };
 
   const onRootKeyDown = useCallback(
@@ -1274,7 +1335,11 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
           ref={rulerCanvasRef}
           onPointerDown={(event) => {
             event.preventDefault();
-            onRulerPointerDown?.(timeFromClientX(event.clientX), event);
+            const time = timeFromClientX(event.clientX);
+            dispatchTimeAreaClick(
+              time,
+              event as unknown as React.MouseEvent<HTMLDivElement, MouseEvent>,
+            );
           }}
           onDoubleClick={(event) => {
             event.preventDefault();

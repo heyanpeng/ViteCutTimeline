@@ -182,8 +182,9 @@ export default function App() {
   const onBlankAreaPointerDown = useCallback((nextTime: number) => {
     setTime(nextTime);
   }, []);
-  const handleSeekFromRulerPointerDown = useCallback((nextTime: number) => {
+  const handleClickTimeArea = useCallback((nextTime: number) => {
     setTime(nextTime);
+    return true;
   }, []);
   const handleSeekFromRulerDoubleClick = useCallback((nextTime: number) => {
     setTime(nextTime);
@@ -404,10 +405,11 @@ export default function App() {
           trackGap={TRACK_GAP}
           trackHeightPresets={TRACK_HEIGHT_PRESETS}
           onEditorDataChange={setEditorData}
-          onTimeChange={setTime}
+          onCursorDrag={setTime}
+          onCursorDragEnd={setTime}
           onPlayingChange={setPlaying}
           onZoomChange={setZoom}
-          onRulerPointerDown={handleSeekFromRulerPointerDown}
+          onClickTimeArea={handleClickTimeArea}
           onBlankAreaPointerDown={onBlankAreaPointerDown}
           onRulerDoubleClick={handleSeekFromRulerDoubleClick}
           onSelectionChange={setSelection}

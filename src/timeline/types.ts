@@ -96,11 +96,56 @@ export type TimelineProps = {
     start: number;
     end: number;
   }) => void;
+  /**
+   * @description 开始改变大小回调
+   */
+  onActionResizeStart?: (params: {
+    action: TimelineAction;
+    row: TimelineRow;
+    dir: "right" | "left";
+  }) => void;
+  /**
+   * @description 开始大小回调（return false可阻止改变）
+   */
+  onActionResizing?: (params: {
+    action: TimelineAction;
+    row: TimelineRow;
+    start: number;
+    end: number;
+    dir: "right" | "left";
+  }) => void | boolean;
+  /**
+   * @description 改变大小结束回调（return false可阻止onChange触发）
+   */
+  onActionResizeEnd?: (params: {
+    action: TimelineAction;
+    row: TimelineRow;
+    start: number;
+    end: number;
+    dir: "right" | "left";
+  }) => void;
   onEditorDataChange?: (next: TimelineRow[]) => void;
-  onTimeChange?: (time: number) => void;
+  /**
+   * @description cursor开始拖拽事件
+   */
+  onCursorDragStart?: (time: number) => void;
+  /**
+   * @description cursor结束拖拽事件
+   */
+  onCursorDragEnd?: (time: number) => void;
+  /**
+   * @description cursor拖拽事件
+   */
+  onCursorDrag?: (time: number) => void;
   onPlayingChange?: (playing: boolean) => void;
   onZoomChange?: (zoom: number) => void;
-  onRulerPointerDown?: (time: number, event: ReactPointerEvent<HTMLCanvasElement>) => void;
+  /**
+   * @description 点击时间区域事件, 返回false时阻止设置时间
+   */
+  onClickTimeArea?: (
+    time: number,
+    e: ReactMouseEvent<HTMLDivElement, MouseEvent>,
+  ) => boolean | undefined;
   onBlankAreaPointerDown?: (time: number, event: ReactPointerEvent<HTMLDivElement>) => void;
   onRulerDoubleClick?: (time: number, event: ReactMouseEvent<HTMLCanvasElement>) => void;
   onBlankAreaDoubleClick?: (time: number, event: ReactMouseEvent<HTMLDivElement>) => void;
