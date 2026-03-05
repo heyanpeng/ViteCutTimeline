@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Timeline } from "./timeline/Timeline";
-import type { TimelineAction, TimelineRow } from "./timeline/model";
-import type { Selection } from "./timeline/types";
+import type { Selection, TimelineAction, TimelineRow } from "./timeline/types";
 import { formatTimeWithMs } from "./timeline/utils";
 import "./App.css";
 
