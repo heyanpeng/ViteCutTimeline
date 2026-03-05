@@ -198,9 +198,14 @@ export default function App() {
     <div className="demo-page">
       <header className="demo-header">
         <div className="demo-header-row">
-          <div>
-            <p className="demo-badge">Open Source Demo</p>
-            <h1>VitCut Timeline Playground</h1>
+          <div className="demo-brand">
+            <div className="demo-title-group">
+              <img
+                className="demo-logo"
+                src="/logo.png"
+                alt="ViteCutTimeline Logo"
+              />
+            </div>
           </div>
           <a
             className="github-link"
