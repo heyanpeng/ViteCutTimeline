@@ -12,7 +12,7 @@ A React timeline component for web-based video editors, powered by a Canvas + DO
 ## Screenshots
 
 <p align="center">
-  <img src="./docs/images/timeline-demo.png" alt="ViteCutTimeline Demo Screenshot" />
+  <img src="https://raw.githubusercontent.com/heyanpeng/ViteCutTimeline/master/docs/images/timeline-demo.png" alt="ViteCutTimeline Demo Screenshot" />
 </p>
 
 ## Features

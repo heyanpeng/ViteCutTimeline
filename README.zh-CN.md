@@ -12,7 +12,7 @@
 ## 截图预览
 
 <p align="center">
-  <img src="./docs/images/timeline-demo.png" alt="ViteCutTimeline 演示截图" />
+  <img src="https://raw.githubusercontent.com/heyanpeng/ViteCutTimeline/master/docs/images/timeline-demo.png" alt="ViteCutTimeline 演示截图" />
 </p>
 
 ## 特性
