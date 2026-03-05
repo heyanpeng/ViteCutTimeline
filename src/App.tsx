@@ -204,6 +204,7 @@ export default function App() {
     () => Boolean(selectedAction),
     [selectedAction],
   );
+  const canCopySelected = useMemo(() => Boolean(selectedAction), [selectedAction]);
 
   /**
    * 判断当前播放头是否可以被split分割
@@ -355,6 +356,98 @@ export default function App() {
     });
     setPlaying(false);
   }, [canTrimToPlayhead, getSelectedActionContext, time]);
+
+  /**
+   * 删除当前选中的clip
+   */
+  const handleDeleteSelectedClip = useCallback(() => {
+    if (!selection) return;
+    setEditorData((prev) => {
+      const next = prev
+        .map((track) => {
+          if (track.id !== selection.rowId) return track;
+          return {
+            ...track,
+            actions: track.actions.filter(
+              (item) => item.id !== selection.actionId,
+            ),
+          };
+        })
+        .filter(
+          (track) => !(track.role !== "main" && track.actions.length === 0),
+        );
+      return next;
+    });
+    setSelection(null);
+    setPlaying(false);
+  }, [selection]);
+
+  /**
+   * 复制当前选中clip到新轨道（插入到当前轨道下方）
+   */
+  const handleCopySelectedToNewTrack = useCallback(() => {
+    if (!selection) return;
+    let nextSelection: Selection = null;
+    setEditorData((prev) => {
+      const rowIndex = prev.findIndex((track) => track.id === selection.rowId);
+      if (rowIndex < 0) return prev;
+      const sourceRow = prev[rowIndex];
+      const sourceAction = sourceRow.actions.find(
+        (item) => item.id === selection.actionId,
+      );
+      if (!sourceAction) return prev;
+
+      const rowIds = new Set(prev.map((track) => track.id));
+      let rowSeq = prev.length + 1;
+      let newRowId = `track-${rowSeq}`;
+      while (rowIds.has(newRowId)) {
+        rowSeq += 1;
+        newRowId = `track-${rowSeq}`;
+      }
+
+      const actionIds = new Set(
+        prev.flatMap((track) => track.actions.map((item) => item.id)),
+      );
+      let actionSeq = 1;
+      let newActionId = `${sourceAction.id}-copy-${actionSeq}`;
+      while (actionIds.has(newActionId)) {
+        actionSeq += 1;
+        newActionId = `${sourceAction.id}-copy-${actionSeq}`;
+      }
+
+      const copiedAction: TimelineAction = {
+        ...sourceAction,
+        id: newActionId,
+      };
+      const fallbackRowHeight =
+        sourceAction.kind === "video"
+          ? TRACK_HEIGHT_PRESETS.video
+          : sourceAction.kind === "audio"
+            ? TRACK_HEIGHT_PRESETS.audio
+            : sourceAction.kind === "image"
+              ? TRACK_HEIGHT_PRESETS.image
+              : sourceAction.kind === "text"
+                ? TRACK_HEIGHT_PRESETS.text
+                : sourceAction.kind === "solid"
+                  ? TRACK_HEIGHT_PRESETS.solid
+                  : TRACK_HEIGHT_PRESETS.main;
+      const newRow: TimelineRow = {
+        id: newRowId,
+        name: `${sourceRow.name ?? "Track"} Copy`,
+        // Main track must be unique: copied clips always go to non-main rows.
+        role: sourceAction.kind === "audio" ? "audio" : "normal",
+        rowHeight: fallbackRowHeight,
+        actions: [copiedAction],
+      };
+
+      const nextRows = [...prev];
+      nextRows.splice(rowIndex, 0, newRow);
+      nextSelection = { rowId: newRowId, actionId: newActionId };
+      return nextRows;
+    });
+    if (nextSelection) setSelection(nextSelection);
+    setPlaying(false);
+  }, [selection]);
 
   /**
    * 点击timeline时间区，跳转播放头
@@ -750,6 +843,22 @@ export default function App() {
               disabled={!canTrimToPlayhead}
             >
               Trim Right
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={handleDeleteSelectedClip}
+              disabled={!canDeleteSelected}
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={handleCopySelectedToNewTrack}
+              disabled={!canCopySelected}
+            >
+              Copy To New Track
             </button>
           </fieldset>
 
