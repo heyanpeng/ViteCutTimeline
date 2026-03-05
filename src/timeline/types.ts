@@ -69,8 +69,6 @@ export type TimelineProps = {
   duration: number;
   /** 是否处于播放状态 */
   playing: boolean;
-  /** 播放结束时的行为（停止/循环），默认为"stop" */
-  playEndBehavior?: "stop" | "loop";
   /** 当前播放时间（单位：秒） */
   currentTime?: number;
   /** 是否显示次级刻度线 */

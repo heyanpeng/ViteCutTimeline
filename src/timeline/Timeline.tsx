@@ -54,7 +54,6 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
       editorData,
       duration,
       playing,
-      playEndBehavior = "stop",
       currentTime,
       showMinorTicks = true,
       showHorizontalLines = true,

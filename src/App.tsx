@@ -1135,8 +1135,6 @@ export default function App() {
           duration={DURATION}
           // 播放状态
           playing={playing}
-          // 播放结束行为（停止/循环）
-          playEndBehavior={playEndBehavior}
           // 当前播放时间
           currentTime={time}
           // 是否显示次级刻度线
