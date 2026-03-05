@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Timeline } from "./timeline/Timeline";
 import type { Selection, TimelineAction, TimelineRow } from "./timeline/types";
-import { formatTimeWithMs } from "./timeline/utils";
+import { formatTimeWithMs, pixelToTime } from "./timeline/utils";
 import "./App.css";
-
-// 时间轴的总时长（单位：秒）
-const DURATION = 120;
 
 // Github 项目地址
 const GITHUB_URL = "https://github.com/heyanpeng/ViteCutTimeline";
@@ -19,6 +16,8 @@ const MAX_ZOOM = 8;
 const TRACK_GAP = 6;
 // 轨道控制区宽度（像素）
 const TRACK_CONTROLS_WIDTH = 135;
+// 最后一个 clip 末尾的固定留白（像素）
+const TIMELINE_END_PADDING_PX = 240;
 
 // 轨道高度预设，根据内容类型定制高度
 const TRACK_HEIGHT_PRESETS = {
@@ -206,6 +205,8 @@ export default function App() {
   const [selection, setSelection] = useState<Selection>(null);
   const playRafRef = useRef<number | null>(null);
   const playLastTsRef = useRef<number | null>(null);
+  const stageRef = useRef<HTMLElement | null>(null);
+  const [stageWidth, setStageWidth] = useState(0);
   const getRowControlState = useCallback(
     (rowId: string) => {
       const row = editorData.find((item) => item.id === rowId);
@@ -269,15 +270,38 @@ export default function App() {
    * 当前时间的格式化字符串
    */
   const currentTime = useMemo(() => formatTimeWithMs(time), [time]);
-  const playbackEnd = useMemo(() => {
+  const lastClipEnd = useMemo(() => {
     let maxEnd = 0;
     editorData.forEach((row) => {
       row.actions.forEach((action) => {
         maxEnd = Math.max(maxEnd, action.end);
       });
     });
-    return Math.max(0, Math.min(maxEnd, DURATION));
+    return Math.max(0, maxEnd);
   }, [editorData]);
+  const timelineDuration = useMemo(() => {
+    const paddingSeconds = pixelToTime(TIMELINE_END_PADDING_PX, zoom);
+    const durationWithPadding = lastClipEnd + paddingSeconds;
+    const mainViewportWidth = Math.max(0, stageWidth - TRACK_CONTROLS_WIDTH);
+    const minDurationForViewport = pixelToTime(mainViewportWidth, zoom);
+    return Math.max(1, durationWithPadding, minDurationForViewport);
+  }, [lastClipEnd, stageWidth, zoom]);
+  const playbackEnd = lastClipEnd;
+
+  useEffect(() => {
+    const stageEl = stageRef.current;
+    if (!stageEl) return;
+    const sync = () => setStageWidth(stageEl.clientWidth);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(stageEl);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (time <= timelineDuration) return;
+    setTime(timelineDuration);
+  }, [time, timelineDuration]);
 
   useEffect(() => {
     if (!playing) {
@@ -807,8 +831,8 @@ export default function App() {
    * 当前时间进度百分比
    */
   const timeProgress = useMemo(
-    () => ((time / DURATION) * 100).toFixed(1),
-    [time],
+    () => ((time / timelineDuration) * 100).toFixed(1),
+    [time, timelineDuration],
   );
 
   /**
@@ -1153,12 +1177,12 @@ export default function App() {
         </div>
       </section>
 
-      <section className="stage">
+      <section ref={stageRef} className="stage">
         <Timeline
           // 时间轴编辑数据
           editorData={editorData}
           // 总时长
-          duration={DURATION}
+          duration={timelineDuration}
           // 播放状态
           playing={playing}
           // 当前播放时间
