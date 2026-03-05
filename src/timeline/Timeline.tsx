@@ -886,6 +886,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
     ) => {
       if (event.button !== 0) return;
       if (trim) return;
+      if (action.movable === false || action.disable) return;
       event.preventDefault();
       isDragWhenClickRef.current = false;
       (event.currentTarget as HTMLDivElement).setPointerCapture(
@@ -1008,10 +1009,12 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
         prev
           ? {
               ...prev,
-              previewRowId: targetRowId,
-              previewStart: visualStart,
-              insertRowIndex: insertCandidate?.index ?? null,
-              insertLineY: insertCandidate?.lineY ?? null,
+              previewRowId: canMoveByCallback ? targetRowId : prev.previewRowId,
+              previewStart: canMoveByCallback ? visualStart : prev.previewStart,
+              insertRowIndex: canMoveByCallback
+                ? (insertCandidate?.index ?? null)
+                : null,
+              insertLineY: canMoveByCallback ? (insertCandidate?.lineY ?? null) : null,
               commitStart: canMoveByCallback ? resolvedStart : null,
               snappedTime:
                 canMoveByCallback && resolvedStart != null

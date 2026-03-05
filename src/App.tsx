@@ -227,25 +227,31 @@ export default function App() {
     if (!row) return null;
     return row.actions.find((item) => item.id === selection.actionId) ?? null;
   }, [editorData, selection]);
+  const selectedRowLocked = useMemo(() => {
+    if (!selection) return false;
+    const row = editorData.find((item) => item.id === selection.rowId);
+    return Boolean(row?.locked);
+  }, [editorData, selection]);
 
   /**
    * 判断当前播放头是否在可以裁剪的位置
    */
   const canTrimToPlayhead = useMemo(() => {
     if (!selectedAction) return false;
+    if (selectedRowLocked) return false;
     return time > selectedAction.start && time < selectedAction.end;
-  }, [selectedAction, time]);
+  }, [selectedAction, selectedRowLocked, time]);
 
   /**
    * 判断是否有选中可删除的action
    */
   const canDeleteSelected = useMemo(
-    () => Boolean(selectedAction),
-    [selectedAction],
+    () => Boolean(selectedAction) && !selectedRowLocked,
+    [selectedAction, selectedRowLocked],
   );
   const canCopySelected = useMemo(
-    () => Boolean(selectedAction),
-    [selectedAction],
+    () => Boolean(selectedAction) && !selectedRowLocked,
+    [selectedAction, selectedRowLocked],
   );
 
   /**
@@ -253,10 +259,11 @@ export default function App() {
    */
   const canSplitAtPlayhead = useMemo(() => {
     if (!selectedAction) return false;
+    if (selectedRowLocked) return false;
     const left = time - selectedAction.start;
     const right = selectedAction.end - time;
     return left > MIN_EDIT_DURATION && right > MIN_EDIT_DURATION;
-  }, [selectedAction, time]);
+  }, [selectedAction, selectedRowLocked, time]);
 
   /**
    * 当前时间的格式化字符串
@@ -362,6 +369,7 @@ export default function App() {
     const ctx = getSelectedActionContext(editorData);
     if (!ctx) return;
     const { row, rowIndex, actionIndex, action } = ctx;
+    if (Boolean(row.locked)) return;
     const left = time - action.start;
     const right = action.end - time;
     if (left <= MIN_EDIT_DURATION || right <= MIN_EDIT_DURATION) return;
@@ -406,6 +414,7 @@ export default function App() {
       const ctx = getSelectedActionContext(prev);
       if (!ctx) return prev;
       const { row, action } = ctx;
+      if (Boolean(row.locked)) return prev;
       const nextStart = Math.min(Math.max(time, action.start), action.end);
       const delta = nextStart - action.start;
       return prev.map((track) => {
@@ -436,6 +445,7 @@ export default function App() {
       const ctx = getSelectedActionContext(prev);
       if (!ctx) return prev;
       const { row, action } = ctx;
+      if (Boolean(row.locked)) return prev;
       const nextEnd = Math.max(Math.min(time, action.end), action.start);
       const delta = nextEnd - action.end;
       return prev.map((track) => {
@@ -463,6 +473,8 @@ export default function App() {
   const handleDeleteSelectedClip = useCallback(() => {
     if (!selection) return;
     setEditorData((prev) => {
+      const locked = prev.find((track) => track.id === selection.rowId)?.locked;
+      if (Boolean(locked)) return prev;
       const next = prev
         .map((track) => {
           if (track.id !== selection.rowId) return track;
@@ -490,6 +502,7 @@ export default function App() {
       const rowIndex = prev.findIndex((track) => track.id === selection.rowId);
       if (rowIndex < 0) return prev;
       const sourceRow = prev[rowIndex];
+      if (Boolean(sourceRow.locked)) return prev;
       const sourceAction = sourceRow.actions.find(
         (item) => item.id === selection.actionId,
       );
