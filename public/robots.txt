@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://heyanpeng.github.io/ViteCutTimeline/sitemap.xml
+Sitemap: https://timeline.vitecut.com/sitemap.xml

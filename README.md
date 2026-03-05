@@ -11,10 +11,9 @@ A React timeline component for web-based video editors, powered by a Canvas + DO
 
 ## Screenshots
 
-> Replace these placeholders with real screenshots later.
-
-![ViteCutTimeline Screenshot 1](./docs/images/screenshot-1.png)
-![ViteCutTimeline Screenshot 2](./docs/images/screenshot-2.png)
+<p align="center">
+  <img src="./docs/images/timeline-demo.png" alt="ViteCutTimeline Demo Screenshot" />
+</p>
 
 ## Features
 

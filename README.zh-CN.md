@@ -11,10 +11,9 @@
 
 ## 截图预览
 
-> 你后续补图时，直接替换下面路径即可。
-
-![ViteCutTimeline 截图 1](./docs/images/screenshot-1.png)
-![ViteCutTimeline 截图 2](./docs/images/screenshot-2.png)
+<p align="center">
+  <img src="./docs/images/timeline-demo.png" alt="ViteCutTimeline 演示截图" />
+</p>
 
 ## 特性
 
