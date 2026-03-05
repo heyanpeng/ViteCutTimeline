@@ -219,6 +219,142 @@ export default function App() {
   const currentTime = useMemo(() => formatTimeWithMs(time), [time]);
 
   /**
+   * 基于当前editorData+selection获取选中action上下文
+   */
+  const getSelectedActionContext = useCallback(
+    (rows: TimelineRow[]) => {
+      if (!selection) return null;
+      const rowIndex = rows.findIndex((item) => item.id === selection.rowId);
+      if (rowIndex < 0) return null;
+      const row = rows[rowIndex];
+      const actionIndex = row.actions.findIndex(
+        (item) => item.id === selection.actionId,
+      );
+      if (actionIndex < 0) return null;
+      const action = row.actions[actionIndex];
+      return { rowIndex, actionIndex, row, action };
+    },
+    [selection],
+  );
+
+  /**
+   * 生成分割后右侧clip的唯一id
+   */
+  const createSplitActionId = useCallback(
+    (row: TimelineRow, baseId: string) => {
+      const existing = new Set(row.actions.map((item) => item.id));
+      let index = 1;
+      let nextId = `${baseId}-split-${index}`;
+      while (existing.has(nextId)) {
+        index += 1;
+        nextId = `${baseId}-split-${index}`;
+      }
+      return nextId;
+    },
+    [],
+  );
+
+  /**
+   * 在播放头处分割选中clip
+   */
+  const handleSplitAtPlayhead = useCallback(() => {
+    const ctx = getSelectedActionContext(editorData);
+    if (!ctx) return;
+    const { row, rowIndex, actionIndex, action } = ctx;
+    const left = time - action.start;
+    const right = action.end - time;
+    if (left <= MIN_EDIT_DURATION || right <= MIN_EDIT_DURATION) return;
+
+    const sourceIn = action.inPoint ?? 0;
+    const sourceOut = action.outPoint ?? sourceIn + (action.end - action.start);
+    const rightId = createSplitActionId(row, action.id);
+    const leftAction: TimelineAction = {
+      ...action,
+      end: time,
+      inPoint: sourceIn,
+      outPoint: sourceIn + left,
+    };
+    const rightAction: TimelineAction = {
+      ...action,
+      id: rightId,
+      start: time,
+      inPoint: sourceIn + left,
+      outPoint: sourceOut,
+    };
+
+    setEditorData((prev) =>
+      prev.map((item, index) => {
+        if (index !== rowIndex) return item;
+        const actions = [...item.actions];
+        actions.splice(actionIndex, 1, leftAction, rightAction);
+        return { ...item, actions };
+      }),
+    );
+    setSelection({ rowId: row.id, actionId: rightId });
+    setPlaying(false);
+  }, [createSplitActionId, editorData, getSelectedActionContext, time]);
+
+  /**
+   * 左裁剪到播放头
+   */
+  const handleTrimLeftToPlayhead = useCallback(() => {
+    if (!canTrimToPlayhead) return;
+    setEditorData((prev) => {
+      const ctx = getSelectedActionContext(prev);
+      if (!ctx) return prev;
+      const { row, action } = ctx;
+      const nextStart = Math.min(Math.max(time, action.start), action.end);
+      const delta = nextStart - action.start;
+      return prev.map((track) => {
+        if (track.id !== row.id) return track;
+        return {
+          ...track,
+          actions: track.actions.map((item) =>
+            item.id === action.id
+              ? {
+                  ...item,
+                  start: nextStart,
+                  inPoint: (item.inPoint ?? 0) + delta,
+                }
+              : item,
+          ),
+        };
+      });
+    });
+    setPlaying(false);
+  }, [canTrimToPlayhead, getSelectedActionContext, time]);
+
+  /**
+   * 右裁剪到播放头
+   */
+  const handleTrimRightToPlayhead = useCallback(() => {
+    if (!canTrimToPlayhead) return;
+    setEditorData((prev) => {
+      const ctx = getSelectedActionContext(prev);
+      if (!ctx) return prev;
+      const { row, action } = ctx;
+      const nextEnd = Math.max(Math.min(time, action.end), action.start);
+      const delta = nextEnd - action.end;
+      return prev.map((track) => {
+        if (track.id !== row.id) return track;
+        return {
+          ...track,
+          actions: track.actions.map((item) =>
+            item.id === action.id
+              ? {
+                  ...item,
+                  end: nextEnd,
+                  outPoint: (item.outPoint ?? item.inPoint ?? 0) + delta,
+                }
+              : item,
+          ),
+        };
+      });
+    });
+    setPlaying(false);
+  }, [canTrimToPlayhead, getSelectedActionContext, time]);
+
+  /**
    * 点击timeline时间区，跳转播放头
    * @param nextTime
    * @returns {boolean}
@@ -522,9 +658,30 @@ export default function App() {
 
           <fieldset className="control-group">
             <legend>Edit</legend>
-            <span className="meta-item">
-              Edit actions moved to external callbacks
-            </span>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={handleTrimLeftToPlayhead}
+              disabled={!canTrimToPlayhead}
+            >
+              Trim Left
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={handleSplitAtPlayhead}
+              disabled={!canSplitAtPlayhead}
+            >
+              Split
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={handleTrimRightToPlayhead}
+              disabled={!canTrimToPlayhead}
+            >
+              Trim Right
+            </button>
           </fieldset>
 
           <fieldset className="control-group control-group-zoom">

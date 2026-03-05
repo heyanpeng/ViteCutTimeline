@@ -7,15 +7,27 @@ import type {
 export type ClipKind = "text" | "solid" | "image" | "video" | "audio";
 
 export interface TimelineAction {
+  /** 动作id */
   id: string;
+  /** 动作开始时间 */
   start: number;
+  /** 动作结束时间 */
   end: number;
+  /** 动作所对应的effectId */
   effectId: string;
+
+  /** 动作是否被选中 */
   selected?: boolean;
+  /** 动作是否可伸缩 */
   flexible?: boolean;
+  /** 动作是否可移动 */
   movable?: boolean;
+  /** 动作是否禁止运行 */
   disable?: boolean;
+
+  /** 动作最小开始时间限制 */
   minStart?: number;
+  /** 动作最大结束时间限制 */
   maxEnd?: number;
 
   layer?: number;
@@ -28,10 +40,15 @@ export interface TimelineAction {
 }
 
 export interface TimelineRow {
+  /** 动作行id */
   id: string;
+  /** 行的动作列表 */
   actions: TimelineAction[];
+  /** 自定义行高 */
   rowHeight?: number;
+  /** 行是否选中 */
   selected?: boolean;
+  /** 行的扩展类名 */
   classNames?: string[];
 
   name?: string;
@@ -49,63 +66,74 @@ export type TrackHeightPresets = {
 };
 
 export type TimelineProps = {
+  /** 编辑区的数据，包含所有的行及动作 */
   editorData: TimelineRow[];
+  /** 时间轴的总时长（单位：秒） */
   duration: number;
+  /** 是否处于播放状态 */
   playing: boolean;
+  /** 播放结束时的行为（停止/循环），默认为"stop" */
   playEndBehavior?: "stop" | "loop";
+  /** 当前播放时间（单位：秒） */
   currentTime?: number;
+  /** 是否显示次级刻度线 */
   showMinorTicks?: boolean;
+  /** 是否显示横向分割线 */
   showHorizontalLines?: boolean;
+  /** 拖拽移动clip时，是否吸附到其他clip的边缘 */
   dragSnapToClipEdges?: boolean;
+  /** 裁剪clip时，是否吸附到其他clip的边缘 */
   trimSnapToClipEdges?: boolean;
+  /** 裁剪clip时，是否吸附到时间线刻度 */
   trimSnapToTimelineTicks?: boolean;
+  /** 裁剪吸附判定阈值（像素，默认值通常为8） */
   trimSnapThresholdPx?: number;
+  /** 裁剪吸附模式（吸附主刻度/次刻度） */
   trimSnapTickMode?: "minor" | "major";
+  /** 初始时间（单位：秒，默认为0） */
   initialTime?: number;
+  /** 最小缩放比例 */
   minZoom?: number;
+  /** 最大缩放比例 */
   maxZoom?: number;
+  /** 当前缩放比例 */
   zoom?: number;
+  /** 单行轨道高度（像素，优先级低于trackHeightPresets） */
   rowHeight?: number;
+  /** 轨道之间的间距（像素） */
   trackGap?: number;
+  /** 轨道高度预设，根据内容类型定制高度 */
   trackHeightPresets?: TrackHeightPresets;
+  /** 轨道控制区宽度（像素，默认184） */
   trackControlsWidth?: number;
+  /** 轨道控制区渲染函数 */
   renderTrackControls?: (params: TrackControlRenderParams) => ReactNode;
-  /**
-   * @description 开始移动回调
-   */
+  /** 开始移动回调 */
   onActionMoveStart?: (params: {
     action: TimelineAction;
     row: TimelineRow;
   }) => void;
-  /**
-   * @description 移动回调（return false可阻止移动）
-   */
+  /** 移动回调（return false可阻止移动） */
   onActionMoving?: (params: {
     action: TimelineAction;
     row: TimelineRow;
     start: number;
     end: number;
   }) => void | boolean;
-  /**
-   * @description 移动结束回调（return false可阻止onChange触发）
-   */
+  /** 移动结束回调（return false可阻止onChange触发） */
   onActionMoveEnd?: (params: {
     action: TimelineAction;
     row: TimelineRow;
     start: number;
     end: number;
   }) => void;
-  /**
-   * @description 开始改变大小回调
-   */
+  /** 开始改变大小回调 */
   onActionResizeStart?: (params: {
     action: TimelineAction;
     row: TimelineRow;
     dir: "right" | "left";
   }) => void;
-  /**
-   * @description 开始大小回调（return false可阻止改变）
-   */
+  /** 开始大小回调（return false可阻止改变） */
   onActionResizing?: (params: {
     action: TimelineAction;
     row: TimelineRow;
@@ -113,9 +141,7 @@ export type TimelineProps = {
     end: number;
     dir: "right" | "left";
   }) => void | boolean;
-  /**
-   * @description 改变大小结束回调（return false可阻止onChange触发）
-   */
+  /** 改变大小结束回调（return false可阻止onChange触发） */
   onActionResizeEnd?: (params: {
     action: TimelineAction;
     row: TimelineRow;
@@ -124,32 +150,20 @@ export type TimelineProps = {
     dir: "right" | "left";
   }) => void;
   onEditorDataChange?: (next: TimelineRow[]) => void;
-  /**
-   * @description cursor开始拖拽事件
-   */
+  /** cursor开始拖拽事件 */
   onCursorDragStart?: (time: number) => void;
-  /**
-   * @description cursor结束拖拽事件
-   */
+  /** cursor结束拖拽事件 */
   onCursorDragEnd?: (time: number) => void;
-  /**
-   * @description cursor拖拽事件
-   */
+  /** cursor拖拽事件 */
   onCursorDrag?: (time: number) => void;
-  /**
-   * @description 缩放事件
-   */
+  /** 缩放事件 */
   onZoomChange?: (zoom: number) => void;
-  /**
-   * @description 点击时间区域事件, 返回false时阻止设置时间
-   */
+  /** 点击时间区域事件, 返回false时阻止设置时间 */
   onClickTimeArea?: (
     time: number,
     e: ReactMouseEvent<HTMLDivElement, MouseEvent>,
   ) => boolean | undefined;
-  /**
-   * @description 点击行回调
-   */
+  /** 点击行回调 */
   onClickRow?: (
     e: ReactMouseEvent<HTMLElement, MouseEvent>,
     param: {
@@ -157,9 +171,7 @@ export type TimelineProps = {
       time: number;
     },
   ) => void;
-  /**
-   * @description 点击动作回调
-   */
+  /** 点击动作回调 */
   onClickAction?: (
     e: ReactMouseEvent<HTMLElement, MouseEvent>,
     param: {
@@ -168,9 +180,7 @@ export type TimelineProps = {
       time: number;
     },
   ) => void;
-  /**
-   * @description 点击动作回调（触发drag时不执行）
-   */
+  /** 点击动作回调（触发drag时不执行） */
   onClickActionOnly?: (
     e: ReactMouseEvent<HTMLElement, MouseEvent>,
     param: {
@@ -179,9 +189,7 @@ export type TimelineProps = {
       time: number;
     },
   ) => void;
-  /**
-   * @description 双击行回调
-   */
+  /** 双击行回调 */
   onDoubleClickRow?: (
     e: ReactMouseEvent<HTMLElement, MouseEvent>,
     param: {
@@ -189,9 +197,7 @@ export type TimelineProps = {
       time: number;
     },
   ) => void;
-  /**
-   * @description 双击动作回调
-   */
+  /** 双击动作回调 */
   onDoubleClickAction?: (
     e: ReactMouseEvent<HTMLElement, MouseEvent>,
     param: {
@@ -205,7 +211,7 @@ export type TimelineProps = {
 export interface TimelineState {
   /** dom节点 */
   target: HTMLElement | null;
-  /** 运行监听器 */
+  /** 运行监听器，暂时未使用 */
   // listener: Emitter<EventTypes>;
   /** 是否正在播放 */
   isPlaying: boolean;
