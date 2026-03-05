@@ -1127,6 +1127,10 @@ export default function App() {
           onCursorDrag={handleCursorDrag}
           // 光标拖动结束事件（常用于同步全局状态）
           onCursorDragEnd={handleCursorDragEnd}
+          // 开始播放事件：同步外部播放状态
+          onPlayStart={() => setPlaying(true)}
+          // 播放结束事件：更新外部播放状态，确保按钮状态同步
+          onPlayEnd={() => setPlaying(false)}
           // 区域点击回调，跳到指定时间并暂停播放，需多处更新本地及全局播放状态
           onClickTimeArea={handleClickTimeArea}
           // 点击轨道行空白处：同样跳到该位置时间并暂停（时间线跟着动）

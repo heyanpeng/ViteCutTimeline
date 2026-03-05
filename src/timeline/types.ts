@@ -165,6 +165,10 @@ export type TimelineProps = {
   onCursorDragEnd?: (time: number) => void;
   /** cursor拖拽事件 */
   onCursorDrag?: (time: number) => void;
+  /** 开始播放事件 */
+  onPlayStart?: (time: number) => void;
+  /** 播放到结束点事件 */
+  onPlayEnd?: (time: number) => void;
   /** 缩放事件 */
   onZoomChange?: (zoom: number) => void;
   /** 点击时间区域事件, 返回false时阻止设置时间 */

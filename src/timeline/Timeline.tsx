@@ -86,6 +86,8 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
       onCursorDragStart,
       onCursorDragEnd,
       onCursorDrag,
+      onPlayStart,
+      onPlayEnd,
       onZoomChange,
       onClickTimeArea,
       onClickRow,
@@ -107,6 +109,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
     const playheadRef = useRef<HTMLDivElement | null>(null);
     const scrubbingPointerIdRef = useRef<number | null>(null);
     const currentTimeRef = useRef(initialTime);
+    const prevPlayingRef = useRef(playing);
     const playRateRef = useRef(1);
     const playRequestRef = useRef<{
       toTime?: number;
@@ -372,6 +375,14 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
     }, [drawRuler]);
 
     useEffect(() => {
+      const wasPlaying = prevPlayingRef.current;
+      if (!wasPlaying && playing) {
+        onPlayStart?.(currentTimeRef.current);
+      }
+      prevPlayingRef.current = playing;
+    }, [onPlayStart, playing]);
+
+    useEffect(() => {
       if (!playing) {
         if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
@@ -411,6 +422,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
             rafRef.current = requestAnimationFrame(loop);
           } else {
             playRequestRef.current = null;
+            onPlayEnd?.(nextTime);
           }
           return;
         }
@@ -426,6 +438,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
     }, [
       lastActionEnd,
       onCursorDrag,
+      onPlayEnd,
       playEndBehavior,
       playing,
       updatePlayheadPosition,
