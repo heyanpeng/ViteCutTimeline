@@ -260,6 +260,7 @@ body {
   padding: 0 8px;
   border-bottom: 1px solid rgba(45, 60, 85, 0.35);
   background: rgba(19, 27, 40, 0.62);
+  overflow: hidden;
 }
 
 .timeline-row-dim-overlay {
@@ -269,6 +270,19 @@ body {
   background: rgba(10, 14, 22, 0.48);
   pointer-events: none;
   z-index: 2;
+}
+
+.timeline-row-lock-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(180, 188, 201, 0.2) 0 6px,
+    rgba(84, 94, 112, 0.2) 6px 12px
+  );
 }
 
 .timeline-track-controls {

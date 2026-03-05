@@ -1563,6 +1563,19 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
                   />
                 );
               })}
+              {visibleTracks.map((row) => {
+                const layout = trackLayoutMap.get(row.id);
+                if (!layout) return null;
+                const isRowLocked = Boolean((row as { locked?: unknown }).locked);
+                if (!isRowLocked) return null;
+                return (
+                  <div
+                    key={`${row.id}-lock-overlay`}
+                    className="timeline-row-lock-overlay"
+                    style={{ top: layout.top, height: layout.height }}
+                  />
+                );
+              })}
               {visibleTracks.map((row) => (
                 <React.Fragment key={row.id}>
                   {row.actions.map((action) => {
