@@ -18,25 +18,6 @@
   overflow: hidden;
 }
 
-.timeline-track-panel {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  border-right: 1px solid #263245;
-  background: #0d121c;
-  z-index: 12;
-}
-
-.timeline-track-panel-body {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 30px;
-  bottom: 0;
-  overflow: hidden;
-}
-
 .timeline-bg-canvas {
   position: absolute;
   inset: 0;
