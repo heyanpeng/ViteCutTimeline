@@ -294,8 +294,13 @@
     react "^18.3.1"
     react-dom "^18.3.1"
 
-"@vitecut/timeline@0.0.1", "@vitecut/timeline@file:/Users/heyanpeng/project/ViteCutTimeline/packages/timeline":
-  version "0.0.2"
+"@vitecut/timeline@0.0.1":
+  version "0.0.1"
+  resolved "https://registry.npmjs.org/@vitecut/timeline/-/timeline-0.0.1.tgz"
+  integrity sha512-OlKYX/JCGHSGD/APHmoISWn/YGx8Uf/vz6n6f2kA+lCd8scdywlINTpcMavAJsd33KgmMvS3eAhoBkxv1vcMBg==
+
+"@vitecut/timeline@file:/Users/heyanpeng/project/ViteCutTimeline/packages/timeline":
+  version "0.0.3"
   resolved "file:packages/timeline"
 
 "@vitejs/plugin-react@^4.3.4":
