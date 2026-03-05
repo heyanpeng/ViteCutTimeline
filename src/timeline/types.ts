@@ -105,6 +105,8 @@ export type TimelineProps = {
   trackHeightPresets?: TrackHeightPresets;
   /** 轨道控制区宽度（像素，默认184） */
   trackControlsWidth?: number;
+  /** 轨道面板头部渲染（外部实现） */
+  renderTrackPanelHeader?: ReactNode | (() => ReactNode);
   /** 轨道控制区渲染函数（纯渲染，控制逻辑由外部处理） */
   renderTrackControls?: (row: TimelineRow) => ReactNode;
   /** 自定义action区域渲染 */

@@ -72,6 +72,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
       trackGap = 0,
       trackHeightPresets,
       trackControlsWidth = 184,
+      renderTrackPanelHeader,
       renderTrackControls,
       getActionRender,
       getActionDragRender,
@@ -1465,6 +1466,12 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
       },
       [renderTrackControls],
     );
+    const trackPanelHeaderNode = useMemo(() => {
+      if (typeof renderTrackPanelHeader === "function") {
+        return renderTrackPanelHeader();
+      }
+      return renderTrackPanelHeader ?? null;
+    }, [renderTrackPanelHeader]);
 
     return (
       <div
@@ -1481,7 +1488,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
           className="timeline-track-panel"
           style={{ width: trackControlsWidth }}
         >
-          <div className="timeline-track-panel-header">Tracks</div>
+          <div className="timeline-track-panel-header">{trackPanelHeaderNode}</div>
           <div className="timeline-track-panel-body">
             {trackLayouts.map((layout) => {
               const row = editorData[layout.index];

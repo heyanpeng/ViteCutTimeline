@@ -1105,6 +1105,8 @@ export default function App() {
           trackHeightPresets={TRACK_HEIGHT_PRESETS}
           // 轨道控制区宽度由外部传入
           trackControlsWidth={TRACK_CONTROLS_WIDTH}
+          // 轨道面板头部由外部渲染
+          renderTrackPanelHeader={<span>Tracks</span>}
           // 轨道控制区逻辑在外部实现（先不影响轨道样式）
           renderTrackControls={renderTrackControls}
           // 自定义action渲染（业务样式在外部实现）

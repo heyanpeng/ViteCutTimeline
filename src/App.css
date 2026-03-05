@@ -220,6 +220,29 @@ body {
   font-size: 12px;
 }
 
+.timeline-track-panel-header {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  color: #8fa4c5;
+  font-size: 12px;
+  border-bottom: 1px solid #253046;
+  letter-spacing: 0.02em;
+}
+
+.timeline-track-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  border-bottom: 1px solid rgba(45, 60, 85, 0.35);
+  background: rgba(19, 27, 40, 0.62);
+}
+
 .timeline-track-controls {
   display: inline-flex;
   align-items: center;
