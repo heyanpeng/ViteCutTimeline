@@ -69,6 +69,9 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
   trackHeightPresets,
   trackControlsWidth = 184,
   renderTrackControls,
+  onActionMoveStart,
+  onActionMoving,
+  onActionMoveEnd,
   onEditorDataChange,
   onTimeChange,
   onPlayingChange,
@@ -763,6 +766,13 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
       const dx = event.clientX - pendingDrag.startClientX;
       const dy = event.clientY - pendingDrag.startClientY;
       if (Math.hypot(dx, dy) < DRAG_START_THRESHOLD_PX) return;
+      const startRow = editorData.find((row) => row.id === pendingDrag.rowId);
+      if (startRow) {
+        onActionMoveStart?.({
+          action: pendingDrag.action,
+          row: startRow,
+        });
+      }
       setDrag({
         originRowId: pendingDrag.rowId,
         previewRowId: pendingDrag.rowId,
@@ -814,6 +824,16 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
       : canPlace
         ? resolveStartInTrack(targetRowId, drag.actionId, actionDuration, visualStart)
         : null;
+    const originRow = editorData.find((row) => row.id === drag.originRowId);
+    const canMoveByCallback =
+      resolvedStart != null && originRow
+        ? onActionMoving?.({
+            action: drag.action,
+            row: originRow,
+            start: resolvedStart,
+            end: resolvedStart + actionDuration,
+          }) !== false
+        : resolvedStart != null;
 
     setDrag((prev) =>
       prev
@@ -823,9 +843,9 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
             previewStart: visualStart,
             insertRowIndex: insertCandidate?.index ?? null,
             insertLineY: insertCandidate?.lineY ?? null,
-            commitStart: resolvedStart,
-            snappedTime: resolvedStart != null ? snapped.snappedTime : null,
-            isDropValid: resolvedStart != null,
+            commitStart: canMoveByCallback ? resolvedStart : null,
+            snappedTime: canMoveByCallback && resolvedStart != null ? snapped.snappedTime : null,
+            isDropValid: canMoveByCallback && resolvedStart != null,
           }
         : prev,
     );
@@ -879,6 +899,15 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
           (row) => !(row.id === drag.originRowId && row.actions.length === 0 && row.role !== "main"),
         )
       : next;
+    const finalRow = finalizedRows.find((row) => row.id === finalPreviewRowId);
+    if (finalRow) {
+      onActionMoveEnd?.({
+        action: drag.action,
+        row: finalRow,
+        start: movedAction.start,
+        end: movedAction.end,
+      });
+    }
     onEditorDataChange?.(finalizedRows);
     setDrag(null);
   };
