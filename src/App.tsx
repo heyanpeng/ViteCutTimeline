@@ -1,28 +1,37 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Timeline } from "./timeline/Timeline";
 import type { Selection, TimelineAction, TimelineRow } from "./timeline/types";
 import { formatTimeWithMs } from "./timeline/utils";
 import "./App.css";
 
+// 时间轴的总时长（单位：秒）
 const DURATION = 120;
+
+// Github 项目地址
 const GITHUB_URL = "https://github.com/heyanpeng/ViteCutTimeline";
+
+// 最小缩放比例
 const MIN_ZOOM = 0.1;
+// 最大缩放比例
 const MAX_ZOOM = 8;
+
+// 轨道之间的间距（像素）
 const TRACK_GAP = 6;
+// 轨道控制区宽度（像素）
+const TRACK_CONTROLS_WIDTH = 135;
+
+// 轨道高度预设，根据内容类型定制高度
 const TRACK_HEIGHT_PRESETS = {
-  main: 70,
-  video: 50,
-  audio: 50,
-  image: 40,
-  text: 40,
-  solid: 40,
+  main: 70, // 主轨道
+  video: 50, // 视频轨道
+  audio: 50, // 音频轨道
+  image: 40, // 图片轨道
+  text: 40, // 文字轨道
+  solid: 40, // 纯色块轨道
 };
+
+// 最小可编辑片段时长（单位：秒）
 const MIN_EDIT_DURATION = 0.04;
-type RowControlState = {
-  locked: boolean;
-  hidden: boolean;
-  muted: boolean;
-};
 
 /**
  * 简单地返回action自身
@@ -40,6 +49,9 @@ const createDemoRows = (): TimelineRow[] => [
     id: "text",
     name: "Text",
     role: "normal",
+    locked: false,
+    hidden: false,
+    muted: false,
     rowHeight: 40,
     actions: [
       a({
@@ -68,6 +80,9 @@ const createDemoRows = (): TimelineRow[] => [
     id: "image",
     name: "Image",
     role: "normal",
+    locked: false,
+    hidden: false,
+    muted: false,
     rowHeight: 40,
     actions: [
       a({
@@ -96,6 +111,9 @@ const createDemoRows = (): TimelineRow[] => [
     id: "video-main",
     name: "Main Video",
     role: "main",
+    locked: false,
+    hidden: false,
+    muted: false,
     rowHeight: 70,
     actions: [
       a({
@@ -124,6 +142,9 @@ const createDemoRows = (): TimelineRow[] => [
     id: "audio",
     name: "Audio",
     role: "audio",
+    locked: false,
+    hidden: false,
+    muted: false,
     rowHeight: 50,
     actions: [
       a({
@@ -183,25 +204,16 @@ export default function App() {
   const [zoom, setZoom] = useState(1);
   // 选中clip或行
   const [selection, setSelection] = useState<Selection>(null);
-  // 轨道控制状态（外部管理）
-  const [rowControls, setRowControls] = useState<Record<string, RowControlState>>({});
-
-  // 清理已删除轨道的控制状态
-  useEffect(() => {
-    const existingIds = new Set(editorData.map((row) => row.id));
-    setRowControls((prev) => {
-      const next: Record<string, RowControlState> = {};
-      Object.entries(prev).forEach(([rowId, state]) => {
-        if (existingIds.has(rowId)) next[rowId] = state;
-      });
-      return next;
-    });
-  }, [editorData]);
-
   const getRowControlState = useCallback(
-    (rowId: string): RowControlState =>
-      rowControls[rowId] ?? { locked: false, hidden: false, muted: false },
-    [rowControls],
+    (rowId: string) => {
+      const row = editorData.find((item) => item.id === rowId);
+      return {
+        locked: Boolean(row?.locked),
+        hidden: Boolean(row?.hidden),
+        muted: Boolean(row?.muted),
+      };
+    },
+    [editorData],
   );
 
   /**
@@ -464,6 +476,9 @@ export default function App() {
         name: `${sourceRow.name ?? "Track"} Copy`,
         // Main track must be unique: copied clips always go to non-main rows.
         role: sourceAction.kind === "audio" ? "audio" : "normal",
+        locked: false,
+        hidden: false,
+        muted: false,
         rowHeight: fallbackRowHeight,
         actions: [copiedAction],
       };
@@ -567,6 +582,9 @@ export default function App() {
             id: newId,
             role,
             name: `Track ${nextIndex}`,
+            locked: false,
+            hidden: false,
+            muted: false,
             rowHeight,
             actions: [movedAction],
           };
@@ -765,16 +783,30 @@ export default function App() {
       const state = getRowControlState(row.id);
       const role = (row as { role?: unknown }).role;
       const isMainTrack = role === "main";
+      const actions = (row.actions ?? []) as Array<{ kind?: unknown }>;
+      const hasAudioAction = actions.some((item) => item.kind === "audio");
+      const hasVideoAction = actions.some((item) => item.kind === "video");
+      const isAudioTrack = role === "audio" || hasAudioAction;
+      const isVideoTrack = role === "main" || hasVideoAction;
+      const showHideButton = !isAudioTrack;
+      const showMuteButton = isAudioTrack || isVideoTrack;
+      const hiddenStyle = {
+        visibility: "hidden" as const,
+        pointerEvents: "none" as const,
+      };
       return (
         <div className="timeline-track-controls">
           <button
             type="button"
             className={`timeline-track-btn${state.locked ? " active" : ""}`}
             onClick={() =>
-              setRowControls((prev) => ({
-                ...prev,
-                [row.id]: { ...getRowControlState(row.id), locked: !state.locked },
-              }))
+              setEditorData((prev) =>
+                prev.map((track) =>
+                  track.id === row.id
+                    ? { ...track, locked: !Boolean(track.locked) }
+                    : track,
+                ),
+              )
             }
             title={state.locked ? "Unlock Track" : "Lock Track"}
           >
@@ -783,11 +815,15 @@ export default function App() {
           <button
             type="button"
             className={`timeline-track-btn${state.hidden ? " active" : ""}`}
+            style={showHideButton ? undefined : hiddenStyle}
             onClick={() =>
-              setRowControls((prev) => ({
-                ...prev,
-                [row.id]: { ...getRowControlState(row.id), hidden: !state.hidden },
-              }))
+              setEditorData((prev) =>
+                prev.map((track) =>
+                  track.id === row.id
+                    ? { ...track, hidden: !Boolean(track.hidden) }
+                    : track,
+                ),
+              )
             }
             title={state.hidden ? "Show Track" : "Hide Track"}
           >
@@ -796,11 +832,15 @@ export default function App() {
           <button
             type="button"
             className={`timeline-track-btn${state.muted ? " active" : ""}`}
+            style={showMuteButton ? undefined : hiddenStyle}
             onClick={() =>
-              setRowControls((prev) => ({
-                ...prev,
-                [row.id]: { ...getRowControlState(row.id), muted: !state.muted },
-              }))
+              setEditorData((prev) =>
+                prev.map((track) =>
+                  track.id === row.id
+                    ? { ...track, muted: !Boolean(track.muted) }
+                    : track,
+                ),
+              )
             }
             title={state.muted ? "Unmute Track" : "Mute Track"}
           >
@@ -812,15 +852,14 @@ export default function App() {
             disabled={isMainTrack}
             onClick={() => {
               if (isMainTrack) return;
-              setEditorData((prev) => prev.filter((track) => track.id !== row.id));
-              setRowControls((prev) => {
-                const next = { ...prev };
-                delete next[row.id];
-                return next;
-              });
+              setEditorData((prev) =>
+                prev.filter((track) => track.id !== row.id),
+              );
               if (selection?.rowId === row.id) setSelection(null);
             }}
-            title={isMainTrack ? "Main Track cannot be deleted" : "Delete Track"}
+            title={
+              isMainTrack ? "Main Track cannot be deleted" : "Delete Track"
+            }
           >
             🗑
           </button>
@@ -1064,6 +1103,8 @@ export default function App() {
           trackGap={TRACK_GAP}
           // 轨道高度预设
           trackHeightPresets={TRACK_HEIGHT_PRESETS}
+          // 轨道控制区宽度由外部传入
+          trackControlsWidth={TRACK_CONTROLS_WIDTH}
           // 轨道控制区逻辑在外部实现（先不影响轨道样式）
           renderTrackControls={renderTrackControls}
           // 自定义action渲染（业务样式在外部实现）
