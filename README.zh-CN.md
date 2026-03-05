@@ -1,7 +1,7 @@
 [English](README.md) | **简体中文**
 
 <p align="center">
-  <img src="./public/logo.png" alt="ViteCutTimeline Logo" height="80" />
+  <img src="https://raw.githubusercontent.com/heyanpeng/ViteCutTimeline/master/apps/demo/public/logo.png" alt="ViteCutTimeline Logo" height="80" />
 </p>
 
 一个面向 Web 视频编辑器场景的 React 时间轴组件，采用 Canvas + DOM 混合渲染，支持拖拽、裁剪、分割、吸附、缩放与虚拟化渲染。

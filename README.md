@@ -1,7 +1,7 @@
 **English** | [简体中文](README.zh-CN.md)
 
 <p align="center">
-  <img src="./public/logo.png" alt="ViteCutTimeline Logo" height="80" />
+  <img src="https://raw.githubusercontent.com/heyanpeng/ViteCutTimeline/master/apps/demo/public/logo.png" alt="ViteCutTimeline Logo" height="80" />
 </p>
 
 A React timeline component for web-based video editors, powered by a Canvas + DOM hybrid rendering architecture. It supports drag-and-drop, trimming, splitting, snapping, zooming, and virtualized rendering.
