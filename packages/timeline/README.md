@@ -1,4 +1,4 @@
-**English** | [简体中文](README.zh-CN.md)
+**English** | [简体中文](https://github.com/heyanpeng/ViteCutTimeline/blob/master/packages/timeline/README.zh-CN.md)
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/heyanpeng/ViteCutTimeline/master/apps/demo/public/logo.png" alt="ViteCutTimeline Logo" height="80" />

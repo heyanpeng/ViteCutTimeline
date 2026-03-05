@@ -295,7 +295,7 @@
     react-dom "^18.3.1"
 
 "@vitecut/timeline@0.0.1", "@vitecut/timeline@file:/Users/heyanpeng/project/ViteCutTimeline/packages/timeline":
-  version "0.0.1"
+  version "0.0.2"
   resolved "file:packages/timeline"
 
 "@vitejs/plugin-react@^4.3.4":
