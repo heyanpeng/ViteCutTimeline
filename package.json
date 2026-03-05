@@ -1,26 +1,17 @@
 {
-  "name": "vite-cut-timeline",
+  "name": "vite-cut-timeline-workspace",
   "private": true,
-  "version": "0.0.1",
-  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist",
-    "deploy:github": "npm run build && gh-pages -d dist -r https://github.com/heyanpeng/ViteCutTimeline.git"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "gh-pages": "^6.3.0",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.11"
+    "dev": "npm run dev --workspace @vitecut/demo",
+    "build": "npm run build --workspace @vitecut/timeline && npm run build --workspace @vitecut/demo",
+    "build:lib": "npm run build --workspace @vitecut/timeline",
+    "build:demo": "npm run build --workspace @vitecut/demo",
+    "preview": "npm run preview --workspace @vitecut/demo",
+    "deploy": "npm run deploy --workspace @vitecut/demo",
+    "deploy:github": "npm run deploy:github --workspace @vitecut/demo"
   }
 }

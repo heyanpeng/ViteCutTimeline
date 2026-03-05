@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Timeline } from "./timeline/Timeline";
-import type { Selection, TimelineAction, TimelineRow } from "./timeline/types";
-import { formatTimeWithMs, pixelToTime } from "./timeline/utils";
+import { Timeline, formatTimeWithMs, pixelToTime } from "@vitecut/timeline";
+import type { Selection, TimelineAction, TimelineRow } from "@vitecut/timeline";
 import "./App.css";
 
 // Github 项目地址

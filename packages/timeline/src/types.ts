@@ -32,7 +32,6 @@ export interface TimelineAction {
 
   /** 业务扩展字段（时间轴核心不关心其结构） */
   [key: string]: unknown;
-
 }
 
 export interface TimelineRow {
@@ -49,7 +48,6 @@ export interface TimelineRow {
 
   /** 业务扩展字段（时间轴核心不关心其结构） */
   [key: string]: unknown;
-
 }
 
 export type TrackHeightPresets = {
