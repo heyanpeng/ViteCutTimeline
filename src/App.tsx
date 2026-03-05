@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Timeline } from "./timeline/Timeline";
 import type { Selection, TimelineAction, TimelineRow } from "./timeline/types";
 import { formatTimeWithMs } from "./timeline/utils";
@@ -204,6 +204,8 @@ export default function App() {
   const [zoom, setZoom] = useState(1);
   // 选中clip或行
   const [selection, setSelection] = useState<Selection>(null);
+  const playRafRef = useRef<number | null>(null);
+  const playLastTsRef = useRef<number | null>(null);
   const getRowControlState = useCallback(
     (rowId: string) => {
       const row = editorData.find((item) => item.id === rowId);
@@ -260,6 +262,62 @@ export default function App() {
    * 当前时间的格式化字符串
    */
   const currentTime = useMemo(() => formatTimeWithMs(time), [time]);
+  const playbackEnd = useMemo(() => {
+    let maxEnd = 0;
+    editorData.forEach((row) => {
+      row.actions.forEach((action) => {
+        maxEnd = Math.max(maxEnd, action.end);
+      });
+    });
+    return Math.max(0, Math.min(maxEnd, DURATION));
+  }, [editorData]);
+
+  useEffect(() => {
+    if (!playing) {
+      if (playRafRef.current != null) cancelAnimationFrame(playRafRef.current);
+      playRafRef.current = null;
+      playLastTsRef.current = null;
+      return;
+    }
+    if (playbackEnd <= 0) {
+      setPlaying(false);
+      return;
+    }
+
+    const tick = (now: number) => {
+      const lastTs = playLastTsRef.current;
+      playLastTsRef.current = now;
+      if (lastTs == null) {
+        playRafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
+      const elapsed = (now - lastTs) / 1000;
+      let shouldStop = false;
+      setTime((prev) => {
+        const next = prev + elapsed;
+        if (next < playbackEnd) return next;
+        if (playEndBehavior === "loop") return 0;
+        shouldStop = true;
+        return playbackEnd;
+      });
+
+      if (shouldStop) {
+        setPlaying(false);
+        playRafRef.current = null;
+        playLastTsRef.current = null;
+        return;
+      }
+      playRafRef.current = requestAnimationFrame(tick);
+    };
+
+    playRafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (playRafRef.current != null) cancelAnimationFrame(playRafRef.current);
+      playRafRef.current = null;
+      playLastTsRef.current = null;
+    };
+  }, [playEndBehavior, playbackEnd, playing]);
 
   /**
    * 基于当前editorData+selection获取选中action上下文
@@ -1127,10 +1185,6 @@ export default function App() {
           onCursorDrag={handleCursorDrag}
           // 光标拖动结束事件（常用于同步全局状态）
           onCursorDragEnd={handleCursorDragEnd}
-          // 开始播放事件：同步外部播放状态
-          onPlayStart={() => setPlaying(true)}
-          // 播放结束事件：更新外部播放状态，确保按钮状态同步
-          onPlayEnd={() => setPlaying(false)}
           // 区域点击回调，跳到指定时间并暂停播放，需多处更新本地及全局播放状态
           onClickTimeArea={handleClickTimeArea}
           // 点击轨道行空白处：同样跳到该位置时间并暂停（时间线跟着动）

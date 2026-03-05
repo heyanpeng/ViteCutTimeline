@@ -111,12 +111,6 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
     const currentTimeRef = useRef(initialTime);
     const prevPlayingRef = useRef(playing);
     const playRateRef = useRef(1);
-    const playRequestRef = useRef<{
-      toTime?: number;
-      autoEnd?: boolean;
-      runActionIds?: string[];
-    } | null>(null);
-    const rafRef = useRef<number | null>(null);
     const isDragWhenClickRef = useRef(false);
 
     const [uncontrolledZoom, setUncontrolledZoom] = useState(1);
@@ -166,16 +160,6 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
     );
 
     const totalContentWidth = timeToPixel(duration, zoom);
-    const lastActionEnd = useMemo(() => {
-      let maxEnd = 0;
-      editorData.forEach((row) => {
-        row.actions.forEach((action) => {
-          maxEnd = Math.max(maxEnd, action.end);
-        });
-      });
-      return clamp(maxEnd, 0, duration);
-    }, [duration, editorData]);
-
     const trackLayouts = useMemo<TrackLayout[]>(() => {
       let y = RULER_HEIGHT;
       return editorData.map((row, index) => {
@@ -379,70 +363,11 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
       if (!wasPlaying && playing) {
         onPlayStart?.(currentTimeRef.current);
       }
-      prevPlayingRef.current = playing;
-    }, [onPlayStart, playing]);
-
-    useEffect(() => {
-      if (!playing) {
-        if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-        return;
+      if (wasPlaying && !playing) {
+        onPlayEnd?.(currentTimeRef.current);
       }
-
-      let lastTime = performance.now();
-      let lastReported = currentTimeRef.current;
-
-      const loop = (now: number) => {
-        const elapsed = ((now - lastTime) / 1000) * playRateRef.current;
-        lastTime = now;
-        const requestToTime = playRequestRef.current?.toTime;
-        const playbackEnd =
-          requestToTime == null
-            ? Math.max(0, lastActionEnd)
-            : clamp(requestToTime, 0, duration);
-        const nextTime = clamp(
-          currentTimeRef.current + elapsed,
-          0,
-          playbackEnd,
-        );
-        currentTimeRef.current = nextTime;
-        updatePlayheadPosition(nextTime);
-
-        if (Math.abs(nextTime - lastReported) >= 0.01) {
-          lastReported = nextTime;
-          onCursorDrag?.(nextTime);
-        }
-
-        if (nextTime >= playbackEnd) {
-          if (playEndBehavior === "loop" && playbackEnd > 0) {
-            playRequestRef.current = null;
-            currentTimeRef.current = 0;
-            updatePlayheadPosition(0);
-            onCursorDrag?.(0);
-            rafRef.current = requestAnimationFrame(loop);
-          } else {
-            playRequestRef.current = null;
-            onPlayEnd?.(nextTime);
-          }
-          return;
-        }
-        rafRef.current = requestAnimationFrame(loop);
-      };
-
-      rafRef.current = requestAnimationFrame(loop);
-      return () => {
-        if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-        lastTime = 0;
-      };
-    }, [
-      lastActionEnd,
-      onCursorDrag,
-      onPlayEnd,
-      playEndBehavior,
-      playing,
-      updatePlayheadPosition,
-    ]);
+      prevPlayingRef.current = playing;
+    }, [onPlayEnd, onPlayStart, playing]);
 
     useImperativeHandle(
       ref,
@@ -465,11 +390,12 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
           updatePlayheadPosition(currentTimeRef.current);
         },
         play: (param) => {
-          playRequestRef.current = param;
-          return true;
+          void param;
+          // Playback is controlled externally via props.
+          return false;
         },
         pause: () => {
-          playRequestRef.current = null;
+          return;
         },
         setScrollLeft: (val: number) => {
           if (!scrollRef.current) return;
