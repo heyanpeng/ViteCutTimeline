@@ -66,6 +66,8 @@ export const drawTimelineCanvas = ({
   const startIndex = Math.floor(startMs / tick.minorMs);
   const endIndex = Math.ceil(endMs / tick.minorMs);
   const majorEvery = Math.max(1, Math.floor(tick.majorMs / tick.minorMs));
+  const minorStepPx = timeToPixel(tick.minor, zoom);
+  const minorSampleEvery = minorStepPx < 5 ? 4 : minorStepPx < 9 ? 2 : 1;
 
   for (let i = startIndex; i <= endIndex; i += 1) {
     const tMs = i * tick.minorMs;
@@ -73,7 +75,8 @@ export const drawTimelineCanvas = ({
     const x = timeToPixel(t, zoom) - scrollLeft;
     const isMajor = i % majorEvery === 0;
     if (!showMinorTicks && !isMajor) continue;
-    ctx.strokeStyle = isMajor ? "#384254" : "#232936";
+    if (!isMajor && i % minorSampleEvery !== 0) continue;
+    ctx.strokeStyle = isMajor ? "#36445e" : "#1b2230";
     ctx.beginPath();
     ctx.moveTo(x + 0.5, 0);
     ctx.lineTo(x + 0.5, height);
@@ -118,6 +121,8 @@ export const drawRulerCanvas = ({
   const startIndex = Math.floor(startMs / tick.minorMs);
   const endIndex = Math.ceil(endMs / tick.minorMs);
   const majorEvery = Math.max(1, Math.floor(tick.majorMs / tick.minorMs));
+  const minorStepPx = timeToPixel(tick.minor, zoom);
+  const minorSampleEvery = minorStepPx < 5 ? 4 : minorStepPx < 9 ? 2 : 1;
   const majorTimesMs: number[] = [];
 
   for (let i = startIndex; i <= endIndex; i += 1) {
@@ -126,9 +131,10 @@ export const drawRulerCanvas = ({
     const x = timeToPixel(t, zoom) - scrollLeft;
     const isMajor = i % majorEvery === 0;
     if (!showMinorTicks && !isMajor) continue;
-    ctx.strokeStyle = isMajor ? "#7182a1" : "#4a5b77";
+    if (!isMajor && i % minorSampleEvery !== 0) continue;
+    ctx.strokeStyle = isMajor ? "#7487aa" : "#3e506d";
     ctx.beginPath();
-    ctx.moveTo(x + 0.5, 0);
+    ctx.moveTo(x + 0.5, isMajor ? 0 : 14);
     ctx.lineTo(x + 0.5, height);
     ctx.stroke();
     if (isMajor) majorTimesMs.push(tMs);
