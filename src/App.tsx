@@ -376,6 +376,8 @@ export default function App() {
       row: TimelineRow;
       start: number;
       end: number;
+      targetRowId?: string;
+      insertRowIndex?: number | null;
     }) => {
       return true;
     },
@@ -392,20 +394,77 @@ export default function App() {
       row: TimelineRow;
       start: number;
       end: number;
+      targetRowId?: string;
+      insertRowIndex?: number | null;
     }) => {
-      const { action, row, start, end } = params;
-      setEditorData((prev) =>
-        prev.map((track) => {
-          if (track.id !== row.id) return track;
+      const { action, row, start, end, targetRowId, insertRowIndex } = params;
+      setEditorData((prev) => {
+        const originIndex = prev.findIndex((track) => track.id === row.id);
+        if (originIndex < 0) return prev;
+        const originRow = prev[originIndex];
+        const originAction =
+          originRow.actions.find((item) => item.id === action.id) ?? action;
+        const movedAction: TimelineAction = { ...originAction, start, end };
+
+        const rowsWithoutAction = prev.map((track) => ({
+          ...track,
+          actions: track.actions.filter((item) => item.id !== action.id),
+        }));
+
+        if (insertRowIndex != null) {
+          const existingIds = new Set(rowsWithoutAction.map((track) => track.id));
+          let nextIndex = rowsWithoutAction.length + 1;
+          let newId = `track-${nextIndex}`;
+          while (existingIds.has(newId)) {
+            nextIndex += 1;
+            newId = `track-${nextIndex}`;
+          }
+          const role = movedAction.kind === "audio" ? "audio" : "normal";
+          const rowHeight =
+            movedAction.kind === "video"
+              ? TRACK_HEIGHT_PRESETS.video
+              : movedAction.kind === "audio"
+                ? TRACK_HEIGHT_PRESETS.audio
+                : movedAction.kind === "image"
+                  ? TRACK_HEIGHT_PRESETS.image
+                  : movedAction.kind === "text"
+                    ? TRACK_HEIGHT_PRESETS.text
+                    : movedAction.kind === "solid"
+                      ? TRACK_HEIGHT_PRESETS.solid
+                      : TRACK_HEIGHT_PRESETS.main;
+          const newRow: TimelineRow = {
+            id: newId,
+            role,
+            name: `Track ${nextIndex}`,
+            rowHeight,
+            actions: [movedAction],
+          };
+          const nextRows = [...rowsWithoutAction];
+          const safeInsertIndex = Math.max(
+            0,
+            Math.min(insertRowIndex, nextRows.length),
+          );
+          nextRows.splice(safeInsertIndex, 0, newRow);
+          return nextRows.filter(
+            (track) => !(track.role !== "main" && track.actions.length === 0),
+          );
+        }
+
+        const nextRows = rowsWithoutAction.map((track) => {
+          if (track.id !== targetRowId) return track;
           return {
             ...track,
-            actions: track.actions.map((item) =>
-              item.id === action.id ? { ...item, start, end } : item,
+            actions: [...track.actions, movedAction].sort(
+              (a, b) => a.start - b.start,
             ),
           };
-        }),
-      );
-      setSelection({ rowId: row.id, actionId: action.id });
+        });
+
+        return nextRows.filter(
+          (track) => !(track.role !== "main" && track.actions.length === 0),
+        );
+      });
+      setSelection({ rowId: targetRowId ?? row.id, actionId: action.id });
     },
     [],
   );

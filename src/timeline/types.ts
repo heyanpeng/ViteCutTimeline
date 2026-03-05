@@ -119,6 +119,8 @@ export type TimelineProps = {
     row: TimelineRow;
     start: number;
     end: number;
+    targetRowId?: string;
+    insertRowIndex?: number | null;
   }) => void | boolean;
   /** 移动结束回调（return false可阻止onChange触发） */
   onActionMoveEnd?: (params: {
@@ -126,6 +128,8 @@ export type TimelineProps = {
     row: TimelineRow;
     start: number;
     end: number;
+    targetRowId?: string;
+    insertRowIndex?: number | null;
   }) => void;
   /** 开始改变大小回调 */
   onActionResizeStart?: (params: {

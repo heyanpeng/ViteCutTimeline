@@ -1081,6 +1081,8 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
               row: originRow,
               start: resolvedStart,
               end: resolvedStart + actionDuration,
+              targetRowId: insertCandidate ? undefined : targetRowId,
+              insertRowIndex: insertCandidate?.index ?? null,
             }) !== false
           : resolvedStart != null;
 
@@ -1171,12 +1173,15 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
       const finalRow = finalizedRows.find(
         (row) => row.id === finalPreviewRowId,
       );
-      if (finalRow) {
+      const originRow = editorData.find((row) => row.id === drag.originRowId);
+      if (originRow) {
         onActionMoveEnd?.({
           action: drag.action,
-          row: finalRow,
+          row: originRow,
           start: movedAction.start,
           end: movedAction.end,
+          targetRowId: finalRow?.id,
+          insertRowIndex: drag.insertRowIndex,
         });
       }
       onEditorDataChange?.(finalizedRows);
