@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { Timeline, type TimelineRef } from "./timeline/Timeline";
+import { useCallback, useMemo, useState } from "react";
+import { Timeline } from "./timeline/Timeline";
 import type { TimelineAction, TimelineRow } from "./timeline/model";
 import type { Selection } from "./timeline/types";
 import { formatTimeWithMs } from "./timeline/utils";
@@ -20,14 +20,23 @@ const TRACK_HEIGHT_PRESETS = {
 };
 const MIN_EDIT_DURATION = 0.04;
 
+/**
+ * 简单地返回action自身
+ * @param data TimelineAction
+ * @returns TimelineAction
+ */
 const a = (data: TimelineAction): TimelineAction => data;
 
+/**
+ * 构造Demo的数据
+ * @returns {TimelineRow[]}
+ */
 const createDemoRows = (): TimelineRow[] => [
   {
     id: "text",
     name: "Text",
     role: "normal",
-    height: 40,
+    rowHeight: 40,
     actions: [
       a({
         id: "txt-1",
@@ -55,7 +64,7 @@ const createDemoRows = (): TimelineRow[] => [
     id: "image",
     name: "Image",
     role: "normal",
-    height: 40,
+    rowHeight: 40,
     actions: [
       a({
         id: "img-1",
@@ -83,7 +92,7 @@ const createDemoRows = (): TimelineRow[] => [
     id: "video-main",
     name: "Main Video",
     role: "main",
-    height: 70,
+    rowHeight: 70,
     actions: [
       a({
         id: "v1",
@@ -111,7 +120,7 @@ const createDemoRows = (): TimelineRow[] => [
     id: "audio",
     name: "Audio",
     role: "audio",
-    height: 50,
+    rowHeight: 50,
     actions: [
       a({
         id: "a1",
@@ -137,24 +146,41 @@ const createDemoRows = (): TimelineRow[] => [
   },
 ];
 
+/**
+ * App主组件
+ * @constructor
+ */
 export default function App() {
-  const timelineRef = useRef<TimelineRef | null>(null);
+  // 编辑区数据
   const [editorData, setEditorData] = useState<TimelineRow[]>(() =>
     createDemoRows(),
   );
+  // 播放状态
   const [playing, setPlaying] = useState(false);
+  // 当前时间
   const [time, setTime] = useState(0);
+  // 是否显示细刻度
   const [showMinorTicks, setShowMinorTicks] = useState(false);
+  // 是否显示横线
   const [showHorizontalLines, setShowHorizontalLines] = useState(true);
+  // 播放结束行为
   const [playEndBehavior, setPlayEndBehavior] = useState<"stop" | "loop">(
     "stop",
   );
+  // 拖动时吸附clip边缘
   const [dragSnapToClipEdges, setDragSnapToClipEdges] = useState(true);
+  // 裁剪时吸附时间线刻度
   const [trimSnapToTimelineTicks, setTrimSnapToTimelineTicks] = useState(false);
+  // 裁剪时吸附clip边缘
   const [trimSnapToClipEdges, setTrimSnapToClipEdges] = useState(false);
+  // 缩放
   const [zoom, setZoom] = useState(1);
+  // 选中clip或行
   const [selection, setSelection] = useState<Selection>(null);
 
+  /**
+   * 根据selection找出选中的action
+   */
   const selectedAction = useMemo(() => {
     if (!selection) return null;
     const row = editorData.find((item) => item.id === selection.rowId);
@@ -162,15 +188,25 @@ export default function App() {
     return row.actions.find((item) => item.id === selection.actionId) ?? null;
   }, [editorData, selection]);
 
+  /**
+   * 判断当前播放头是否在可以裁剪的位置
+   */
   const canTrimToPlayhead = useMemo(() => {
     if (!selectedAction) return false;
     return time > selectedAction.start && time < selectedAction.end;
   }, [selectedAction, time]);
+
+  /**
+   * 判断是否有选中可删除的action
+   */
   const canDeleteSelected = useMemo(
     () => Boolean(selectedAction),
     [selectedAction],
   );
 
+  /**
+   * 判断当前播放头是否可以被split分割
+   */
   const canSplitAtPlayhead = useMemo(() => {
     if (!selectedAction) return false;
     const left = time - selectedAction.start;
@@ -178,21 +214,194 @@ export default function App() {
     return left > MIN_EDIT_DURATION && right > MIN_EDIT_DURATION;
   }, [selectedAction, time]);
 
+  /**
+   * 当前时间的格式化字符串
+   */
   const currentTime = useMemo(() => formatTimeWithMs(time), [time]);
-  const onBlankAreaPointerDown = useCallback((nextTime: number) => {
-    setTime(nextTime);
-  }, []);
+
+  /**
+   * 点击timeline时间区，跳转播放头
+   * @param nextTime
+   * @returns {boolean}
+   */
   const handleClickTimeArea = useCallback((nextTime: number) => {
+    setPlaying(false);
     setTime(nextTime);
     return true;
   }, []);
-  const handleSeekFromRulerDoubleClick = useCallback((nextTime: number) => {
+
+  /**
+   * 拖拽clip移动中的回调
+   * @param _params
+   * @returns {boolean}
+   */
+  const handleActionMoving = useCallback(
+    (_params: {
+      action: TimelineAction;
+      row: TimelineRow;
+      start: number;
+      end: number;
+    }) => {
+      return true;
+    },
+    [],
+  );
+
+  /**
+   * 拖拽clip移动结束的回调，写回start/end
+   * @param params
+   */
+  const handleActionMoveEnd = useCallback(
+    (params: {
+      action: TimelineAction;
+      row: TimelineRow;
+      start: number;
+      end: number;
+    }) => {
+      const { action, row, start, end } = params;
+      setEditorData((prev) =>
+        prev.map((track) => {
+          if (track.id !== row.id) return track;
+          return {
+            ...track,
+            actions: track.actions.map((item) =>
+              item.id === action.id ? { ...item, start, end } : item,
+            ),
+          };
+        }),
+      );
+      setSelection({ rowId: row.id, actionId: action.id });
+    },
+    [],
+  );
+
+  /**
+   * 裁剪resize中的约束检测回调
+   * @param _params
+   * @returns {boolean}
+   */
+  const handleActionResizing = useCallback(
+    (_params: {
+      action: TimelineAction;
+      row: TimelineRow;
+      start: number;
+      end: number;
+      dir: "right" | "left";
+    }) => {
+      return true;
+    },
+    [],
+  );
+
+  /**
+   * 裁剪resize结束后写回start/end
+   * @param params
+   */
+  const handleActionResizeEnd = useCallback(
+    (params: {
+      action: TimelineAction;
+      row: TimelineRow;
+      start: number;
+      end: number;
+      dir: "right" | "left";
+    }) => {
+      const { action, row, start, end, dir } = params;
+      setEditorData((prev) =>
+        prev.map((track) => {
+          if (track.id !== row.id) return track;
+          return {
+            ...track,
+            actions: track.actions.map((item) => {
+              if (item.id !== action.id) return item;
+              return dir === "left"
+                ? { ...item, start, end: item.end }
+                : { ...item, start: item.start, end };
+            }),
+          };
+        }),
+      );
+    },
+    [],
+  );
+
+  /**
+   * 拖动播放头时更新当前时间
+   * @param nextTime
+   */
+  const handleCursorDrag = useCallback((nextTime: number) => {
     setTime(nextTime);
   }, []);
+
+  /**
+   * 播放头拖动结束时同步当前时间
+   * @param nextTime
+   */
+  const handleCursorDragEnd = useCallback((nextTime: number) => {
+    setTime(nextTime);
+  }, []);
+
+  /**
+   * 点击空白行时，跳转播放头并取消选择
+   * @param _e
+   * @param param
+   */
+  const handleClickRow = useCallback(
+    (
+      _e: React.MouseEvent<HTMLElement>,
+      param: { row: TimelineRow; time: number },
+    ) => {
+      void param.row;
+      setPlaying(false);
+      setTime(param.time);
+      setSelection(null);
+    },
+    [],
+  );
+
+  /**
+   * 仅点击clip时，切换选中状态
+   * @param _e
+   * @param param
+   */
+  const handleClickActionOnly = useCallback(
+    (
+      _e: React.MouseEvent<HTMLElement>,
+      param: { action: TimelineAction; row: TimelineRow; time: number },
+    ) => {
+      void param.time;
+      setSelection({ rowId: param.row.id, actionId: param.action.id });
+    },
+    [],
+  );
+
+  /**
+   * 双击clip时，播放头跳到该位置
+   * @param _e
+   * @param param
+   */
+  const handleDoubleClickAction = useCallback(
+    (
+      _e: React.MouseEvent<HTMLElement>,
+      param: { action: TimelineAction; row: TimelineRow; time: number },
+    ) => {
+      void param.action;
+      void param.row;
+      setTime(param.time);
+    },
+    [],
+  );
+
+  /**
+   * 当前时间进度百分比
+   */
   const timeProgress = useMemo(
     () => ((time / DURATION) * 100).toFixed(1),
     [time],
   );
+
+  /**
+   * 当前缩放的百分比
+   */
   const zoomPercent = useMemo(() => `${Math.round(zoom * 100)}%`, [zoom]);
 
   return (
@@ -314,38 +523,9 @@ export default function App() {
 
           <fieldset className="control-group">
             <legend>Edit</legend>
-            <button
-              type="button"
-              className="ghost-btn"
-              disabled={!canTrimToPlayhead}
-              onClick={() => timelineRef.current?.trimLeftToPlayhead()}
-            >
-              Trim Left
-            </button>
-            <button
-              type="button"
-              className="ghost-btn"
-              disabled={!canSplitAtPlayhead}
-              onClick={() => timelineRef.current?.splitAtPlayhead()}
-            >
-              Split
-            </button>
-            <button
-              type="button"
-              className="ghost-btn"
-              disabled={!canTrimToPlayhead}
-              onClick={() => timelineRef.current?.trimRightToPlayhead()}
-            >
-              Trim Right
-            </button>
-            <button
-              type="button"
-              className="ghost-btn"
-              disabled={!canDeleteSelected}
-              onClick={() => timelineRef.current?.deleteSelectedClip()}
-            >
-              Delete
-            </button>
+            <span className="meta-item">
+              Edit actions moved to external callbacks
+            </span>
           </fieldset>
 
           <fieldset className="control-group control-group-zoom">
@@ -373,13 +553,6 @@ export default function App() {
             >
               +
             </button>
-            <button
-              type="button"
-              className="ghost-btn"
-              onClick={() => timelineRef.current?.fitToContent()}
-            >
-              Fit
-            </button>
             <span className="zoom-value">{zoomPercent}</span>
           </fieldset>
           <p className="hint">Tip: Hold Ctrl/Cmd + mouse wheel to zoom.</p>
@@ -388,31 +561,58 @@ export default function App() {
 
       <section className="stage">
         <Timeline
-          ref={timelineRef}
+          // 时间轴编辑数据
           editorData={editorData}
+          // 总时长
           duration={DURATION}
+          // 播放状态
           playing={playing}
+          // 播放结束行为（停止/循环）
           playEndBehavior={playEndBehavior}
+          // 当前播放时间
           currentTime={time}
+          // 是否显示次级刻度线
           showMinorTicks={showMinorTicks}
+          // 是否显示横向分割线
           showHorizontalLines={showHorizontalLines}
+          // 裁剪时吸附到时间线刻度
           trimSnapToTimelineTicks={trimSnapToTimelineTicks}
+          // 拖拽时吸附到素材边缘
           dragSnapToClipEdges={dragSnapToClipEdges}
+          // 裁剪时吸附到素材边缘
           trimSnapToClipEdges={trimSnapToClipEdges}
+          // 最小缩放比例
           minZoom={MIN_ZOOM}
+          // 最大缩放比例
           maxZoom={MAX_ZOOM}
+          // 当前缩放比例
           zoom={zoom}
+          // 轨道间距
           trackGap={TRACK_GAP}
+          // 轨道高度预设
           trackHeightPresets={TRACK_HEIGHT_PRESETS}
-          onEditorDataChange={setEditorData}
-          onCursorDrag={setTime}
-          onCursorDragEnd={setTime}
-          onPlayingChange={setPlaying}
-          onZoomChange={setZoom}
+          // 拖拽移动过程中：若轨道已锁定则直接阻止移动
+          onActionMoving={handleActionMoving}
+          // 拖拽移动 clip 结束后：写回 start/end（若轨道未锁定）
+          onActionMoveEnd={handleActionMoveEnd}
+          // 音频 clip resize 约束：只允许缩短或恢复到素材原始时长，不允许拉长超出素材
+          onActionResizing={handleActionResizing}
+          // 改变 clip 长度结束后：写回 start/end（例如裁剪时长），锁定轨道则忽略
+          // - 左侧 resize：只改变起始时间，结束时间保持不变
+          // - 右侧 resize：只改变结束时间，起始时间保持不变
+          onActionResizeEnd={handleActionResizeEnd}
+          // 拖动光标事件，处理当前时间更新
+          onCursorDrag={handleCursorDrag}
+          // 光标拖动结束事件（常用于同步全局状态）
+          onCursorDragEnd={handleCursorDragEnd}
+          // 区域点击回调，跳到指定时间并暂停播放，需多处更新本地及全局播放状态
           onClickTimeArea={handleClickTimeArea}
-          onBlankAreaPointerDown={onBlankAreaPointerDown}
-          onRulerDoubleClick={handleSeekFromRulerDoubleClick}
-          onSelectionChange={setSelection}
+          // 点击轨道行空白处：同样跳到该位置时间并暂停（时间线跟着动）
+          onClickRow={handleClickRow}
+          // 仅点击 clip 时：切换选中态（库会根据 selected 在 action 根节点加 class）
+          onClickActionOnly={handleClickActionOnly}
+          // 双击 clip：将播放头定位到双击位置
+          onDoubleClickAction={handleDoubleClickAction}
         />
       </section>
     </div>

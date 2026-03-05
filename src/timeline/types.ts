@@ -36,7 +36,6 @@ export interface TimelineRow {
 
   name?: string;
   role?: "main" | "audio" | "normal";
-  height?: number;
 }
 
 export type TrackHeightPresets = {
@@ -137,7 +136,9 @@ export type TimelineProps = {
    * @description cursor拖拽事件
    */
   onCursorDrag?: (time: number) => void;
-  onPlayingChange?: (playing: boolean) => void;
+  /**
+   * @description 缩放事件
+   */
   onZoomChange?: (zoom: number) => void;
   /**
    * @description 点击时间区域事件, 返回false时阻止设置时间
@@ -146,11 +147,96 @@ export type TimelineProps = {
     time: number,
     e: ReactMouseEvent<HTMLDivElement, MouseEvent>,
   ) => boolean | undefined;
-  onBlankAreaPointerDown?: (time: number, event: ReactPointerEvent<HTMLDivElement>) => void;
-  onRulerDoubleClick?: (time: number, event: ReactMouseEvent<HTMLCanvasElement>) => void;
-  onBlankAreaDoubleClick?: (time: number, event: ReactMouseEvent<HTMLDivElement>) => void;
-  onSelectionChange?: (selection: Selection) => void;
+  /**
+   * @description 点击行回调
+   */
+  onClickRow?: (
+    e: ReactMouseEvent<HTMLElement, MouseEvent>,
+    param: {
+      row: TimelineRow;
+      time: number;
+    },
+  ) => void;
+  /**
+   * @description 点击动作回调
+   */
+  onClickAction?: (
+    e: ReactMouseEvent<HTMLElement, MouseEvent>,
+    param: {
+      action: TimelineAction;
+      row: TimelineRow;
+      time: number;
+    },
+  ) => void;
+  /**
+   * @description 点击动作回调（触发drag时不执行）
+   */
+  onClickActionOnly?: (
+    e: ReactMouseEvent<HTMLElement, MouseEvent>,
+    param: {
+      action: TimelineAction;
+      row: TimelineRow;
+      time: number;
+    },
+  ) => void;
+  /**
+   * @description 双击行回调
+   */
+  onDoubleClickRow?: (
+    e: ReactMouseEvent<HTMLElement, MouseEvent>,
+    param: {
+      row: TimelineRow;
+      time: number;
+    },
+  ) => void;
+  /**
+   * @description 双击动作回调
+   */
+  onDoubleClickAction?: (
+    e: ReactMouseEvent<HTMLElement, MouseEvent>,
+    param: {
+      action: TimelineAction;
+      row: TimelineRow;
+      time: number;
+    },
+  ) => void;
 };
+
+export interface TimelineState {
+  /** dom节点 */
+  target: HTMLElement | null;
+  /** 运行监听器 */
+  // listener: Emitter<EventTypes>;
+  /** 是否正在播放 */
+  isPlaying: boolean;
+  /** 是否暂停中 */
+  isPaused: boolean;
+  /** 设置当前播放时间 */
+  setTime: (time: number) => void;
+  /** 获取当前播放时间 */
+  getTime: () => number;
+  /** 设置播放速率 */
+  setPlayRate: (rate: number) => void;
+  /** 设置播放速率 */
+  getPlayRate: () => number;
+  /** 重新渲染当前时间 */
+  reRender: () => void;
+  /** 播放 */
+  play: (param: {
+    /** 默认从头运行到尾, 优先级大于autoEnd */
+    toTime?: number;
+    /** 是否播放完后自动结束 */
+    autoEnd?: boolean;
+    /** 运行的actionId列表，不穿默认全部运行 */
+    runActionIds?: string[];
+  }) => boolean;
+  /** 暂停 */
+  pause: () => void;
+  /** 设置scroll left */
+  setScrollLeft: (val: number) => void;
+  /** 设置scroll top */
+  setScrollTop: (val: number) => void;
+}
 
 export type TrackControlState = {
   locked: boolean;
@@ -170,14 +256,6 @@ export type TrackControlRenderParams = {
   state: TrackControlState;
   actions: TrackControlActions;
   isMainTrack: boolean;
-};
-
-export type TimelineRef = {
-  fitToContent: (options?: { paddingPx?: number }) => void;
-  splitAtPlayhead: () => void;
-  trimLeftToPlayhead: () => void;
-  trimRightToPlayhead: () => void;
-  deleteSelectedClip: () => void;
 };
 
 export type DragState = {

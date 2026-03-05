@@ -17,6 +17,7 @@ type ClipItemProps = {
   onPointerMove: (event: PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
   onClick: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onDoubleClick: (event: React.MouseEvent<HTMLDivElement>) => void;
   onTrimPointerDown: (
     event: PointerEvent<HTMLDivElement>,
     side: "left" | "right",
@@ -39,6 +40,7 @@ export const ClipItem: React.FC<ClipItemProps> = ({
   onPointerMove,
   onPointerUp,
   onClick,
+  onDoubleClick,
   onTrimPointerDown,
   onTrimPointerMove,
   onTrimPointerUp,
@@ -52,6 +54,7 @@ export const ClipItem: React.FC<ClipItemProps> = ({
       className={className}
       onPointerDown={onPointerDown}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       style={{

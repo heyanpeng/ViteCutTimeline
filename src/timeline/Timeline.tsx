@@ -1,9 +1,9 @@
 import React, {
-  PointerEvent,
   forwardRef,
+  PointerEvent,
+  useImperativeHandle,
   useCallback,
   useEffect,
-  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -28,8 +28,8 @@ import type {
   TimelineAction,
   TrackControlRenderParams,
   TimelineProps,
-  TimelineRef,
   TimelineRow,
+  TimelineState,
   TrackLayout,
   TrimState,
 } from "./types";
@@ -45,9 +45,8 @@ import "./Timeline.css";
 const MIN_ACTION_DURATION = 0.04;
 
 export { timeToPixel as frameToPixel, pixelToTime as pixelToFrame } from "./utils";
-export type { TimelineRef } from "./types";
 
-export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
+export const Timeline = forwardRef<TimelineState, TimelineProps>(({
   editorData,
   duration,
   playing,
@@ -79,13 +78,13 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
   onCursorDragStart,
   onCursorDragEnd,
   onCursorDrag,
-  onPlayingChange,
   onZoomChange,
   onClickTimeArea,
-  onBlankAreaPointerDown,
-  onRulerDoubleClick,
-  onBlankAreaDoubleClick,
-  onSelectionChange,
+  onClickRow,
+  onClickAction,
+  onClickActionOnly,
+  onDoubleClickRow,
+  onDoubleClickAction,
 }, ref) => {
   const isSourceBoundAction = useCallback((action: TimelineAction) => {
     return action.kind === "video" || action.kind === "audio";
@@ -98,7 +97,14 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
   const playheadRef = useRef<HTMLDivElement | null>(null);
   const scrubbingPointerIdRef = useRef<number | null>(null);
   const currentTimeRef = useRef(initialTime);
+  const playRateRef = useRef(1);
+  const playRequestRef = useRef<{
+    toTime?: number;
+    autoEnd?: boolean;
+    runActionIds?: string[];
+  } | null>(null);
   const rafRef = useRef<number | null>(null);
+  const isDragWhenClickRef = useRef(false);
 
   const [uncontrolledZoom, setUncontrolledZoom] = useState(1);
   const [viewport, setViewport] = useState({ width: 0, height: 0, scrollLeft: 0, scrollTop: 0 });
@@ -112,9 +118,8 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
   const updateSelection = useCallback(
     (next: Selection) => {
       setSelection(next);
-      onSelectionChange?.(next);
     },
-    [onSelectionChange],
+    [],
   );
   const toggleRowLock = useCallback((rowId: string) => {
     setLockedRows((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
@@ -184,7 +189,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     return editorData.map((row, index) => {
       const kind = row.actions[0]?.kind;
       const defaultHeight = getDefaultTrackHeight(row.role, kind);
-      const height = Math.max(MIN_TRACK_HEIGHT, row.height ?? row.rowHeight ?? defaultHeight);
+      const height = Math.max(MIN_TRACK_HEIGHT, row.rowHeight ?? defaultHeight);
       const layout: TrackLayout = { id: row.id, index, top: y, height, bottom: y + height };
       y += height + trackGap;
       return layout;
@@ -259,6 +264,16 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     },
     [zoom],
   );
+  const setCurrentTime = useCallback(
+    (time: number, notify = true) => {
+      const nextTime = clamp(time, 0, duration);
+      currentTimeRef.current = nextTime;
+      updatePlayheadPosition(nextTime);
+      if (notify) onCursorDrag?.(nextTime);
+      return nextTime;
+    },
+    [duration, onCursorDrag, updatePlayheadPosition],
+  );
 
   useEffect(() => {
     updatePlayheadPosition(currentTimeRef.current);
@@ -266,10 +281,8 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
 
   useEffect(() => {
     if (currentTime == null) return;
-    const next = clamp(currentTime, 0, duration);
-    currentTimeRef.current = next;
-    updatePlayheadPosition(next);
-  }, [currentTime, duration, updatePlayheadPosition]);
+    setCurrentTime(currentTime, false);
+  }, [currentTime, setCurrentTime]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -340,9 +353,12 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     let lastReported = currentTimeRef.current;
 
     const loop = (now: number) => {
-      const elapsed = (now - lastTime) / 1000;
+      const elapsed = ((now - lastTime) / 1000) * playRateRef.current;
       lastTime = now;
-      const playbackEnd = Math.max(0, lastActionEnd);
+      const requestToTime = playRequestRef.current?.toTime;
+      const playbackEnd = requestToTime == null
+        ? Math.max(0, lastActionEnd)
+        : clamp(requestToTime, 0, duration);
       const nextTime = clamp(currentTimeRef.current + elapsed, 0, playbackEnd);
       currentTimeRef.current = nextTime;
       updatePlayheadPosition(nextTime);
@@ -354,12 +370,13 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
 
       if (nextTime >= playbackEnd) {
         if (playEndBehavior === "loop" && playbackEnd > 0) {
+          playRequestRef.current = null;
           currentTimeRef.current = 0;
           updatePlayheadPosition(0);
           onCursorDrag?.(0);
           rafRef.current = requestAnimationFrame(loop);
         } else {
-          onPlayingChange?.(false);
+          playRequestRef.current = null;
         }
         return;
       }
@@ -372,7 +389,52 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
       rafRef.current = null;
       lastTime = 0;
     };
-  }, [lastActionEnd, onCursorDrag, onPlayingChange, playEndBehavior, playing, updatePlayheadPosition]);
+  }, [lastActionEnd, onCursorDrag, playEndBehavior, playing, updatePlayheadPosition]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      target: rootRef.current,
+      isPlaying: playing,
+      isPaused: !playing,
+      setTime: (time: number) => {
+        setCurrentTime(time);
+      },
+      getTime: () => currentTimeRef.current,
+      setPlayRate: (rate: number) => {
+        if (!Number.isFinite(rate) || rate <= 0) return;
+        playRateRef.current = rate;
+      },
+      getPlayRate: () => playRateRef.current,
+      reRender: () => {
+        drawCanvas();
+        drawRuler();
+        updatePlayheadPosition(currentTimeRef.current);
+      },
+      play: (param) => {
+        playRequestRef.current = param;
+        return true;
+      },
+      pause: () => {
+        playRequestRef.current = null;
+      },
+      setScrollLeft: (val: number) => {
+        if (!scrollRef.current) return;
+        scrollRef.current.scrollLeft = Math.max(0, val);
+      },
+      setScrollTop: (val: number) => {
+        if (!scrollRef.current) return;
+        scrollRef.current.scrollTop = Math.max(0, val);
+      },
+    }),
+    [
+      drawCanvas,
+      drawRuler,
+      playing,
+      setCurrentTime,
+      updatePlayheadPosition,
+    ],
+  );
 
   const snapStartTime = useCallback(
     (actionId: string, proposedStart: number, actionDuration: number) => {
@@ -447,7 +509,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
       id,
       name: `Track ${index}`,
       role,
-      height: getDefaultTrackHeight(role, actionKind),
+      rowHeight: getDefaultTrackHeight(role, actionKind),
       actions: [],
     };
   }, [editorData, getDefaultTrackHeight]);
@@ -754,6 +816,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     if (trim) return;
     if (isRowLocked(rowId)) return;
     event.preventDefault();
+    isDragWhenClickRef.current = false;
     (event.currentTarget as HTMLDivElement).setPointerCapture(event.pointerId);
     updateSelection({ rowId, actionId: action.id });
     setPendingDrag({
@@ -771,6 +834,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
       const dx = event.clientX - pendingDrag.startClientX;
       const dy = event.clientY - pendingDrag.startClientY;
       if (Math.hypot(dx, dy) < DRAG_START_THRESHOLD_PX) return;
+      isDragWhenClickRef.current = true;
       const startRow = editorData.find((row) => row.id === pendingDrag.rowId);
       if (startRow) {
         onActionMoveStart?.({
@@ -1079,46 +1143,6 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
     [controlledZoom, maxZoom, minZoom, onZoomChange],
   );
 
-  const fitToContent = useCallback(
-    (options?: { paddingPx?: number }) => {
-      const scrollEl = scrollRef.current;
-      if (!scrollEl) return;
-      const paddingPx = options?.paddingPx ?? 24;
-      const viewportWidth = Math.max(1, scrollEl.clientWidth);
-      const start = Math.max(0, contentBounds.minStart);
-      const end = Math.max(start + 0.001, contentBounds.maxEnd);
-      const span = end - start;
-      const usableWidth = Math.max(1, viewportWidth - paddingPx * 2);
-      const nextZoom = clamp(usableWidth / timeToPixel(span, 1), minZoom, maxZoom);
-      setZoomValue(nextZoom);
-      requestAnimationFrame(() => {
-        const current = scrollRef.current;
-        if (!current) return;
-        const startPx = timeToPixel(start, nextZoom);
-        current.scrollLeft = Math.max(0, startPx - paddingPx);
-      });
-    },
-    [contentBounds.maxEnd, contentBounds.minStart, maxZoom, minZoom, setZoomValue],
-  );
-
-  useImperativeHandle(
-    ref,
-    () => ({
-      fitToContent,
-      splitAtPlayhead: splitSelectedClipAtPlayhead,
-      trimLeftToPlayhead: trimSelectedClipLeftToPlayhead,
-      trimRightToPlayhead: trimSelectedClipRightToPlayhead,
-      deleteSelectedClip,
-    }),
-    [
-      deleteSelectedClip,
-      fitToContent,
-      splitSelectedClipAtPlayhead,
-      trimSelectedClipLeftToPlayhead,
-      trimSelectedClipRightToPlayhead,
-    ],
-  );
-
   const zoomAroundTime = useCallback(
     (targetTime: number, nextZoom: number, focusClientX?: number) => {
       const scrollEl = scrollRef.current;
@@ -1163,20 +1187,16 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
   const seekToClientX = useCallback(
     (clientX: number) => {
       const time = timeFromClientX(clientX);
-      currentTimeRef.current = time;
-      updatePlayheadPosition(time);
-      onCursorDrag?.(time);
+      setCurrentTime(time);
     },
-    [onCursorDrag, timeFromClientX, updatePlayheadPosition],
+    [setCurrentTime, timeFromClientX],
   );
   const dispatchTimeAreaClick = useCallback(
     (time: number, event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
       if (onClickTimeArea?.(time, event) === false) return;
-      currentTimeRef.current = time;
-      updatePlayheadPosition(time);
-      onCursorDrag?.(time);
+      setCurrentTime(time);
     },
-    [onClickTimeArea, onCursorDrag, updatePlayheadPosition],
+    [onClickTimeArea, setCurrentTime],
   );
 
   const onPlayheadPointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -1343,7 +1363,11 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
           }}
           onDoubleClick={(event) => {
             event.preventDefault();
-            onRulerDoubleClick?.(timeFromClientX(event.clientX), event);
+            const time = timeFromClientX(event.clientX);
+            dispatchTimeAreaClick(
+              time,
+              event as unknown as React.MouseEvent<HTMLDivElement, MouseEvent>,
+            );
           }}
           className="timeline-ruler-canvas"
         />
@@ -1371,13 +1395,32 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
             const target = event.target as HTMLElement;
             if (!target.closest("[data-clip-id]")) {
               updateSelection(null);
-              onBlankAreaPointerDown?.(timeFromClientX(event.clientX), event);
+              const rowId = getTrackIdByClientY(event.clientY);
+              const row = rowId ? editorData.find((item) => item.id === rowId) : null;
+              if (row) {
+                onClickRow?.(
+                  event as unknown as React.MouseEvent<HTMLElement, MouseEvent>,
+                  {
+                    row,
+                    time: timeFromClientX(event.clientX),
+                  },
+                );
+              }
             }
           }}
           onDoubleClickCapture={(event) => {
             const target = event.target as HTMLElement;
-            if (!target.closest("[data-clip-id]")) {
-              onBlankAreaDoubleClick?.(timeFromClientX(event.clientX), event);
+            if (target.closest("[data-clip-id]")) return;
+            const rowId = getTrackIdByClientY(event.clientY);
+            const row = rowId ? editorData.find((item) => item.id === rowId) : null;
+            if (row) {
+              onDoubleClickRow?.(
+                event as unknown as React.MouseEvent<HTMLElement, MouseEvent>,
+                {
+                  row,
+                  time: timeFromClientX(event.clientX),
+                },
+              );
             }
           }}
         >
@@ -1415,6 +1458,31 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({
                       onClick={(event) => {
                         event.stopPropagation();
                         updateSelection({ rowId: row.id, actionId: action.id });
+                        const clickTime = timeFromClientX(event.clientX);
+                        onClickAction?.(event, {
+                          action,
+                          row,
+                          time: clickTime,
+                        });
+                        if (!isDragWhenClickRef.current) {
+                          onClickActionOnly?.(event, {
+                            action,
+                            row,
+                            time: clickTime,
+                          });
+                        }
+                        isDragWhenClickRef.current = false;
+                      }}
+                      onDoubleClick={(event) => {
+                        event.stopPropagation();
+                        const clickTime = timeFromClientX(event.clientX);
+                        // Double-click action should move playhead to clicked time.
+                        setCurrentTime(clickTime);
+                        onDoubleClickAction?.(event, {
+                          action,
+                          row,
+                          time: clickTime,
+                        });
                       }}
                       onTrimPointerDown={(event, side) => onTrimPointerDown(event, row.id, action, side)}
                       onTrimPointerMove={onTrimPointerMove}

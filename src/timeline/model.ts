@@ -1,1 +1,1 @@
-export type { TimelineAction, TimelineRow, TrackLayout } from "./types";
+export type { TimelineAction, TimelineRow, TimelineState, TrackLayout } from "./types";
