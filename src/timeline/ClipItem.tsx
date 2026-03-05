@@ -1,6 +1,6 @@
-import React, { PointerEvent } from "react";
+import React, { PointerEvent, ReactNode } from "react";
 import type { TimelineAction } from "./types";
-import { getClipColor, getClipIcon, getClipLabel } from "./utils";
+import { getClipColor } from "./utils";
 import "./ClipItem.css";
 
 type ClipItemProps = {
@@ -13,6 +13,7 @@ type ClipItemProps = {
   isSelected: boolean;
   isDraggedSource: boolean;
   isDimmed: boolean;
+  content?: ReactNode;
   onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
   onPointerMove: (event: PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
@@ -36,6 +37,7 @@ export const ClipItem: React.FC<ClipItemProps> = ({
   isSelected,
   isDraggedSource,
   isDimmed,
+  content,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -77,10 +79,13 @@ export const ClipItem: React.FC<ClipItemProps> = ({
         onPointerMove={onTrimPointerMove}
         onPointerUp={onTrimPointerUp}
       />
-      <div className="clip-item-icon">{getClipIcon(renderClip)}</div>
-      <div className="clip-item-content">
-        <div className="clip-item-label">{getClipLabel(renderClip)}</div>
-      </div>
+      {content ?? (
+        <>
+          <div className="clip-item-content">
+            <div className="clip-item-label">{clip.id}</div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

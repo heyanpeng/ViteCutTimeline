@@ -1,6 +1,6 @@
-import React, { PointerEvent } from "react";
+import React, { PointerEvent, ReactNode } from "react";
 import type { TimelineAction } from "./types";
-import { getClipIcon, getClipLabel } from "./utils";
+import { getClipColor } from "./utils";
 import "./DragPreview.css";
 
 // 拖拽预览组件的属性类型定义
@@ -17,6 +17,8 @@ type DragPreviewProps = {
   height: number;
   // 当前拖放位置是否合法
   isDropValid: boolean;
+  // 自定义内容
+  content?: ReactNode;
   // 鼠标/手指拖动时的回调
   onPointerMove: (event: PointerEvent<HTMLDivElement>) => void;
   // 拖拽释放时的回调
@@ -31,6 +33,7 @@ export const DragPreview: React.FC<DragPreviewProps> = ({
   width,
   height,
   isDropValid,
+  content,
   onPointerMove,
   onPointerUp,
 }) => {
@@ -46,12 +49,14 @@ export const DragPreview: React.FC<DragPreviewProps> = ({
         top,
         width,
         height,
+        background: getClipColor(clip),
       }}
     >
-      {/* 显示片段类型图标 */}
-      <div className="drag-preview-icon">{getClipIcon(clip)}</div>
-      {/* 显示片段标签 */}
-      <div className="drag-preview-label">{getClipLabel(clip)}</div>
+      {content ?? (
+        <div className="drag-preview-content">
+          <div className="drag-preview-label">{clip.id}</div>
+        </div>
+      )}
     </div>
   );
 };

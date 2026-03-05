@@ -204,7 +204,10 @@ export default function App() {
     () => Boolean(selectedAction),
     [selectedAction],
   );
-  const canCopySelected = useMemo(() => Boolean(selectedAction), [selectedAction]);
+  const canCopySelected = useMemo(
+    () => Boolean(selectedAction),
+    [selectedAction],
+  );
 
   /**
    * 判断当前播放头是否可以被split分割
@@ -268,8 +271,10 @@ export default function App() {
     const right = action.end - time;
     if (left <= MIN_EDIT_DURATION || right <= MIN_EDIT_DURATION) return;
 
-    const sourceIn = action.inPoint ?? 0;
-    const sourceOut = action.outPoint ?? sourceIn + (action.end - action.start);
+    const sourceIn = Number(action.inPoint ?? 0);
+    const sourceOut = Number(
+      action.outPoint ?? sourceIn + (action.end - action.start),
+    );
     const rightId = createSplitActionId(row, action.id);
     const leftAction: TimelineAction = {
       ...action,
@@ -317,7 +322,7 @@ export default function App() {
               ? {
                   ...item,
                   start: nextStart,
-                  inPoint: (item.inPoint ?? 0) + delta,
+                  inPoint: Number(item.inPoint ?? 0) + delta,
                 }
               : item,
           ),
@@ -347,7 +352,7 @@ export default function App() {
               ? {
                   ...item,
                   end: nextEnd,
-                  outPoint: (item.outPoint ?? item.inPoint ?? 0) + delta,
+                  outPoint: Number(item.outPoint ?? item.inPoint ?? 0) + delta,
                 }
               : item,
           ),
@@ -373,9 +378,7 @@ export default function App() {
             ),
           };
         })
-        .filter(
-          (track) => !(track.role !== "main" && track.actions.length === 0),
-        );
+        .filter((track) => track.actions.length > 0);
       return next;
     });
     setSelection(null);
@@ -507,7 +510,9 @@ export default function App() {
         }));
 
         if (insertRowIndex != null) {
-          const existingIds = new Set(rowsWithoutAction.map((track) => track.id));
+          const existingIds = new Set(
+            rowsWithoutAction.map((track) => track.id),
+          );
           let nextIndex = rowsWithoutAction.length + 1;
           let newId = `track-${nextIndex}`;
           while (existingIds.has(newId)) {
@@ -540,9 +545,7 @@ export default function App() {
             Math.min(insertRowIndex, nextRows.length),
           );
           nextRows.splice(safeInsertIndex, 0, newRow);
-          return nextRows.filter(
-            (track) => !(track.role !== "main" && track.actions.length === 0),
-          );
+          return nextRows.filter((track) => track.actions.length > 0);
         }
 
         const nextRows = rowsWithoutAction.map((track) => {
@@ -555,9 +558,7 @@ export default function App() {
           };
         });
 
-        return nextRows.filter(
-          (track) => !(track.role !== "main" && track.actions.length === 0),
-        );
+        return nextRows.filter((track) => track.actions.length > 0);
       });
       setSelection({ rowId: targetRowId ?? row.id, actionId: action.id });
     },
@@ -692,6 +693,40 @@ export default function App() {
    * 当前缩放的百分比
    */
   const zoomPercent = useMemo(() => `${Math.round(zoom * 100)}%`, [zoom]);
+  const getActionRender = useCallback((action: TimelineAction) => {
+    const icon = String(action.icon ?? "▣");
+    const title = String(action.title ?? action.effectId ?? action.id);
+    const color = String(action.color ?? "#334155");
+    return (
+      <>
+        <div className="clip-item-icon">{icon}</div>
+        <div className="clip-item-content">
+          <div className="clip-item-label" style={{ color: "#e2e8f0" }}>
+            {title}
+          </div>
+          <div
+            style={{
+              fontSize: 10,
+              lineHeight: "12px",
+              opacity: 0.8,
+              color: "#cbd5e1",
+            }}
+          >
+            {action.effectId}
+          </div>
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: color,
+            opacity: 0.2,
+            pointerEvents: "none",
+          }}
+        />
+      </>
+    );
+  }, []);
 
   return (
     <div className="demo-page">
@@ -931,6 +966,8 @@ export default function App() {
           trackGap={TRACK_GAP}
           // 轨道高度预设
           trackHeightPresets={TRACK_HEIGHT_PRESETS}
+          // 自定义action渲染（业务样式在外部实现）
+          getActionRender={getActionRender}
           // 缩放变化回调（用于Ctrl/Cmd+滚轮缩放时回写外部状态）
           onZoomChange={setZoom}
           // 拖拽移动过程中：若轨道已锁定则直接阻止移动

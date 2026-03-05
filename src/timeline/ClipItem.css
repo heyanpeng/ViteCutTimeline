@@ -1,7 +1,7 @@
 .clip-item {
   position: absolute;
   border-radius: 8px;
-  border: 1px solid #1d4ed8;
+  border: 1px solid rgba(226, 232, 240, 0.35);
   box-sizing: border-box;
   cursor: grab;
   overflow: hidden;

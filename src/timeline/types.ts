@@ -30,13 +30,9 @@ export interface TimelineAction {
   /** 动作最大结束时间限制 */
   maxEnd?: number;
 
-  layer?: number;
-  title?: string;
-  icon?: string;
-  kind?: ClipKind;
-  color?: string;
-  inPoint?: number;
-  outPoint?: number;
+  /** 业务扩展字段（时间轴核心不关心其结构） */
+  [key: string]: unknown;
+
 }
 
 export interface TimelineRow {
@@ -51,8 +47,9 @@ export interface TimelineRow {
   /** 行的扩展类名 */
   classNames?: string[];
 
-  name?: string;
-  role?: "main" | "audio" | "normal";
+  /** 业务扩展字段（时间轴核心不关心其结构） */
+  [key: string]: unknown;
+
 }
 
 export type TrackHeightPresets = {
@@ -110,6 +107,10 @@ export type TimelineProps = {
   trackControlsWidth?: number;
   /** 轨道控制区渲染函数 */
   renderTrackControls?: (params: TrackControlRenderParams) => ReactNode;
+  /** 自定义action区域渲染 */
+  getActionRender?: (action: TimelineAction, row: TimelineRow) => ReactNode;
+  /** 自定义拖拽预览渲染 */
+  getActionDragRender?: (action: TimelineAction, row: TimelineRow) => ReactNode;
   /** 开始移动回调 */
   onActionMoveStart?: (params: {
     action: TimelineAction;

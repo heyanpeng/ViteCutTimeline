@@ -122,21 +122,8 @@ export const getActionDuration = (action: TimelineAction) =>
  * @returns 图标字符串（emoji 或字母）
  */
 export const getClipIcon = (action: TimelineAction) => {
-  if (action.icon) return action.icon;
-  switch (action.kind) {
-    case "text":
-      return "T";
-    case "image":
-      return "🖼";
-    case "solid":
-      return "●";
-    case "video":
-      return "🎬";
-    case "audio":
-      return "♪";
-    default:
-      return "▣";
-  }
+  void action;
+  return "▣";
 };
 
 /**
@@ -145,7 +132,7 @@ export const getClipIcon = (action: TimelineAction) => {
  * @returns label 字符串
  */
 export const getClipLabel = (action: TimelineAction) =>
-  action.title ?? action.id;
+  action.effectId || action.id;
 
 /**
  * 根据 Action 类型获取剪辑颜色（如果有自定义 color 优先用自定义的）
@@ -153,19 +140,13 @@ export const getClipLabel = (action: TimelineAction) =>
  * @returns 颜色字符串（十六进制）
  */
 export const getClipColor = (action: TimelineAction) => {
-  if (action.color) return action.color;
-  switch (action.kind) {
-    case "text":
-      return "#6f58d9";
-    case "solid":
-      return "#a64ac9";
-    case "image":
-      return "#3a7d44";
-    case "audio":
-      return "#0f766e";
-    default:
-      return "#2563eb";
+  const key = action.effectId || action.id;
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) | 0;
   }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 65% 42%)`;
 };
 
 /**

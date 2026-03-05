@@ -74,6 +74,8 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
       trackHeightPresets,
       trackControlsWidth = 184,
       renderTrackControls,
+      getActionRender,
+      getActionDragRender,
       onActionMoveStart,
       onActionMoving,
       onActionMoveEnd,
@@ -740,8 +742,8 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
       )
         return;
 
-      const sourceIn = action.inPoint ?? 0;
-      const sourceOut = action.outPoint ?? sourceIn + getActionDuration(action);
+      const sourceIn = Number(action.inPoint ?? 0);
+      const sourceOut = Number(action.outPoint ?? sourceIn + getActionDuration(action));
 
       const rightAction: TimelineAction = {
         ...action,
@@ -789,7 +791,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
           return {
             ...current,
             start: playheadTime,
-            inPoint: (current.inPoint ?? 0) + delta,
+            inPoint: Number(current.inPoint ?? 0) + delta,
           };
         });
         return { ...item, actions };
@@ -812,7 +814,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
             ...current,
             end: playheadTime,
             outPoint:
-              (current.outPoint ?? current.inPoint ?? 0) +
+              Number(current.outPoint ?? current.inPoint ?? 0) +
               getActionDuration(current) +
               delta,
           };
@@ -1175,12 +1177,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
         drag.originRowId !== finalPreviewRowId;
       const finalizedRows = shouldDeleteEmptyOriginTrack
         ? next.filter(
-            (row) =>
-              !(
-                row.id === drag.originRowId &&
-                row.actions.length === 0 &&
-                row.role !== "main"
-              ),
+            (row) => !(row.id === drag.originRowId && row.actions.length === 0),
           )
         : next;
       const finalRow = finalizedRows.find(
@@ -1246,9 +1243,9 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
           if (action.end <= fixedEnd && action.end > maxEnd) return action.end;
           return maxEnd;
         }, 0);
-        const sourceBoundMinDelta = isSourceBoundAction(trim.origin)
-          ? -(trim.origin.inPoint ?? 0)
-          : Number.NEGATIVE_INFINITY;
+      const sourceBoundMinDelta = isSourceBoundAction(trim.origin)
+        ? -Number(trim.origin.inPoint ?? 0)
+        : Number.NEGATIVE_INFINITY;
         const minDelta = Math.max(
           sourceBoundMinDelta,
           -trim.origin.start,
@@ -1290,7 +1287,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
                   ...prev.origin,
                   start: finalStart,
                   inPoint:
-                    (prev.origin.inPoint ?? 0) +
+                    Number(prev.origin.inPoint ?? 0) +
                     (finalStart - prev.origin.start),
                   end: fixedEnd,
                 },
@@ -1344,7 +1341,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
                 ...prev.origin,
                 end: finalEnd,
                 outPoint:
-                  (prev.origin.outPoint ?? prev.origin.inPoint ?? 0) +
+                  Number(prev.origin.outPoint ?? prev.origin.inPoint ?? 0) +
                   (finalEnd - prev.origin.end),
               },
               snappedTime:
@@ -1730,10 +1727,11 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
 
                     return (
                       <ClipItem
-                        key={action.id}
-                        clip={action}
-                        renderClip={renderAction}
-                        left={left}
+                      key={action.id}
+                      clip={action}
+                      renderClip={renderAction}
+                      content={getActionRender?.(renderAction, row)}
+                      left={left}
                         top={top}
                         width={width}
                         height={actionHeight}
@@ -1789,8 +1787,19 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
               ))}
 
               {drag && (
+                (() => {
+                  const previewRow =
+                    editorData.find((row) => row.id === drag.previewRowId) ??
+                    editorData.find((row) => row.id === drag.originRowId) ??
+                    editorData[0];
+                  const previewContent = previewRow
+                    ? getActionDragRender?.(drag.action, previewRow) ??
+                      getActionRender?.(drag.action, previewRow)
+                    : undefined;
+                  return (
                 <DragPreview
                   clip={drag.action}
+                  content={previewContent}
                   left={timeToPixel(drag.previewStart, zoom)}
                   top={
                     trackLayoutMap.get(drag.previewRowId)?.top ?? RULER_HEIGHT
@@ -1807,6 +1816,8 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
                   onPointerMove={onClipPointerMove}
                   onPointerUp={onClipPointerUp}
                 />
+                  );
+                })()
               )}
 
               {drag?.insertLineY != null && (

@@ -1,7 +1,7 @@
 .drag-preview {
   position: absolute;
   border-radius: 8px;
-  background: #334155;
+  border: 1px solid rgba(226, 232, 240, 0.35);
   box-sizing: border-box;
   cursor: grabbing;
   overflow: hidden;
@@ -15,23 +15,15 @@
 }
 
 .drag-preview-valid {
-  border: 1px solid #93c5fd;
+  border-color: rgba(226, 232, 240, 0.35);
 }
 
 .drag-preview-invalid {
   border: 1px solid #f87171;
 }
 
-.drag-preview-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  flex-shrink: 0;
+.drag-preview-content {
+  min-width: 0;
 }
 
 .drag-preview-label {
