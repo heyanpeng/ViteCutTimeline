@@ -14,7 +14,8 @@
 }
 
 .clip-item-selected {
-  box-shadow: 0 0 0 2px #fbbf24 inset;
+  outline: 2px solid #fbbf24;
+  outline-offset: -2px;
 }
 
 .clip-item-dragging {
