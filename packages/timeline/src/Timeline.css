@@ -4,7 +4,6 @@
   height: 500px;
   overflow: hidden;
   border: 1px solid #2b3342;
-  border-radius: 12px;
   background: #0f1115;
   user-select: none;
   touch-action: pan-x pan-y;
@@ -16,6 +15,71 @@
   right: 0;
   bottom: 0;
   overflow: hidden;
+}
+
+.timeline-track-panel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-right: 1px solid #263245;
+  background: #0d121c;
+  z-index: 12;
+}
+
+.timeline-track-panel-header {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  color: #8fa4c5;
+  font-size: 12px;
+  border-bottom: 1px solid #253046;
+  letter-spacing: 0.02em;
+}
+
+.timeline-track-panel-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 30px;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.timeline-track-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  border-bottom: 1px solid rgba(45, 60, 85, 0.35);
+  background: rgba(19, 27, 40, 0.62);
+  overflow: hidden;
+}
+
+.timeline-row-dim-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: rgba(10, 14, 22, 0.48);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.timeline-row-lock-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(180, 188, 201, 0.2) 0 6px,
+    rgba(84, 94, 112, 0.2) 6px 12px
+  );
 }
 
 .timeline-bg-canvas {

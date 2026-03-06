@@ -1,6 +1,6 @@
-import React, { PointerEvent, ReactNode } from "react";
+import type { PointerEvent, ReactNode } from "react";
+import React from "react";
 import type { TimelineAction } from "./types";
-import { getClipColor } from "./utils";
 import "./ClipItem.css";
 
 /**
@@ -19,6 +19,8 @@ type ClipItemProps = {
   width: number;
   // 片段高度（像素）
   height: number;
+  // 额外 className（由外部Timeline汇总后传入）
+  className?: string;
   // 是否被选中
   isSelected: boolean;
   // 是否是正在被拖拽的源对象
@@ -58,6 +60,7 @@ export const ClipItem: React.FC<ClipItemProps> = ({
   top,
   width,
   height,
+  className,
   isSelected,
   isDraggedSource,
   isDimmed,
@@ -72,13 +75,14 @@ export const ClipItem: React.FC<ClipItemProps> = ({
   onTrimPointerUp,
 }) => {
   // 根据状态拼接样式
-  const className = `clip-item${isSelected ? " clip-item-selected" : ""}${isDraggedSource ? " clip-item-dragging" : ""}${isDimmed ? " clip-item-dimmed" : ""}`;
+  const mergedClassName = `clip-item${isSelected ? " clip-item-selected" : ""}${isDraggedSource ? " clip-item-dragging" : ""}${isDimmed ? " clip-item-dimmed" : ""}${className ? ` ${className}` : ""}`;
 
   return (
     <div
       key={clip.id}
       data-clip-id={clip.id}
-      className={className}
+      data-clip-kind={String(renderClip.kind ?? clip.kind ?? "unknown")}
+      className={mergedClassName}
       onPointerDown={onPointerDown}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
@@ -89,7 +93,6 @@ export const ClipItem: React.FC<ClipItemProps> = ({
         top,
         width,
         height,
-        background: getClipColor(renderClip), // 设置片段自身的背景色
       }}
     >
       {/* 左侧修剪手柄 */}

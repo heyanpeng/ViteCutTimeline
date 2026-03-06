@@ -4,6 +4,7 @@ export type {
   ClipKind,
   Selection,
   TimelineAction,
+  TimelineClassNames,
   TimelineProps,
   TimelineRow,
   TimelineState,

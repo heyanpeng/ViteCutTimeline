@@ -16,7 +16,9 @@ export default defineConfig({
     },
     cssCodeSplit: false,
     rollupOptions: {
-      external: ["react", "react-dom"]
+      // Keep React runtimes external to avoid bundling legacy jsx-runtime internals
+      // that can break with newer React versions (e.g. React 19).
+      external: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"]
     }
   }
 });

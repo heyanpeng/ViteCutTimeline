@@ -60,6 +60,29 @@ export type TrackHeightPresets = {
   solid?: number;
 };
 
+export type TimelineClassNames = {
+  root?: string;
+  trackPanel?: string;
+  trackRow?: string | ((row: TimelineRow) => string | undefined);
+  clip?:
+    | string
+    | ((params: {
+        action: TimelineAction;
+        renderAction: TimelineAction;
+        row: TimelineRow;
+        isSelected: boolean;
+        isDraggedSource: boolean;
+        isDimmed: boolean;
+      }) => string | undefined);
+  dragPreview?:
+    | string
+    | ((params: {
+        action: TimelineAction;
+        row: TimelineRow;
+        isDropValid: boolean;
+      }) => string | undefined);
+};
+
 export type TimelineProps = {
   /** 编辑区的数据，包含所有的行及动作 */
   editorData: TimelineRow[];
@@ -101,6 +124,10 @@ export type TimelineProps = {
   trackHeightPresets?: TrackHeightPresets;
   /** 轨道控制区宽度（像素，默认184） */
   trackControlsWidth?: number;
+  /** 外部注入 className（推荐用于样式定制） */
+  className?: string;
+  /** 各部位 className（推荐用于样式定制） */
+  classNames?: TimelineClassNames;
   /** 轨道面板头部渲染（外部实现） */
   renderTrackPanelHeader?: ReactNode | (() => ReactNode);
   /** 轨道控制区渲染函数（纯渲染，控制逻辑由外部处理） */

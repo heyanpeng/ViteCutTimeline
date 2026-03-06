@@ -1,6 +1,6 @@
-import React, { PointerEvent, ReactNode } from "react";
+import type { PointerEvent, ReactNode } from "react";
+import React from "react";
 import type { TimelineAction } from "./types";
-import { getClipColor } from "./utils";
 import "./DragPreview.css";
 
 // 拖拽预览组件的属性类型定义
@@ -15,6 +15,8 @@ type DragPreviewProps = {
   width: number;
   // 预览框的高度
   height: number;
+  // 额外 className（由外部Timeline汇总后传入）
+  className?: string;
   // 当前拖放位置是否合法
   isDropValid: boolean;
   // 自定义内容
@@ -32,16 +34,18 @@ export const DragPreview: React.FC<DragPreviewProps> = ({
   top,
   width,
   height,
+  className,
   isDropValid,
   content,
   onPointerMove,
   onPointerUp,
 }) => {
   // 根据拖放是否合法切换不同的样式
-  const className = `drag-preview${isDropValid ? " drag-preview-valid" : " drag-preview-invalid"}`;
+  const mergedClassName = `drag-preview${isDropValid ? " drag-preview-valid" : " drag-preview-invalid"}${className ? ` ${className}` : ""}`;
   return (
     <div
-      className={className}
+      className={mergedClassName}
+      data-clip-kind={String(clip.kind ?? "unknown")}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       style={{
@@ -49,7 +53,6 @@ export const DragPreview: React.FC<DragPreviewProps> = ({
         top,
         width,
         height,
-        background: getClipColor(clip),
       }}
     >
       {content ?? (

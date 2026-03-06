@@ -71,6 +71,8 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
       trackGap = 0,
       trackHeightPresets,
       trackControlsWidth = 184,
+      className,
+      classNames,
       renderTrackPanelHeader,
       renderTrackControls,
       getActionRender,
@@ -555,9 +557,17 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
             .filter((item) => item.id !== action.id)
             .map((item) => item.kind ?? "video"),
         );
-        if (fixedKinds.size > 0 && !fixedKinds.has(movingKind)) return false;
+        // 主轨道允许混合所有“非音频”类型（video/image/text/solid）；
+        // 仅对普通轨道保持“同轨道同类型”的约束。
+        if (
+          targetTrack.role !== "main" &&
+          fixedKinds.size > 0 &&
+          !fixedKinds.has(movingKind)
+        ) {
+          return false;
+        }
 
-        if (targetTrack.role === "main" && movingKind !== "video") return false;
+        if (targetTrack.role === "main" && movingKind === "audio") return false;
         if (targetTrack.role === "audio" && movingKind !== "audio")
           return false;
         if (movingKind === "audio" && targetTrack.role !== "audio")
@@ -1444,7 +1454,9 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
     return (
       <div
         ref={rootRef}
-        className="timeline-root"
+        className={["timeline-root", className, classNames?.root]
+          .filter(Boolean)
+          .join(" ")}
         tabIndex={0}
         onWheel={onWheelZoom}
         onKeyDown={onRootKeyDown}
@@ -1453,7 +1465,9 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
         }}
       >
         <div
-          className="timeline-track-panel"
+          className={["timeline-track-panel", classNames?.trackPanel]
+            .filter(Boolean)
+            .join(" ")}
           style={{ width: trackControlsWidth }}
         >
           <div className="timeline-track-panel-header">
@@ -1472,7 +1486,13 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
               return (
                 <div
                   key={row.id}
-                  className={["timeline-track-row", ...rowClassNames]
+                  className={[
+                    "timeline-track-row",
+                    ...rowClassNames,
+                    typeof classNames?.trackRow === "function"
+                      ? classNames.trackRow(row)
+                      : classNames?.trackRow,
+                  ]
                     .filter(Boolean)
                     .join(" ")}
                   style={{ top, height: layout.height }}
@@ -1641,6 +1661,18 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
                         top={top}
                         width={width}
                         height={actionHeight}
+                        className={
+                          typeof classNames?.clip === "function"
+                            ? classNames.clip({
+                                action,
+                                renderAction,
+                                row,
+                                isSelected,
+                                isDraggedSource,
+                                isDimmed,
+                              })
+                            : classNames?.clip
+                        }
                         isSelected={isSelected}
                         isDraggedSource={isDraggedSource}
                         isDimmed={isDimmed}
@@ -1720,6 +1752,17 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
                         trackLayoutMap.get(drag.previewRowId)?.height ??
                           rowHeight,
                       )}
+                      className={
+                        typeof classNames?.dragPreview === "function"
+                          ? previewRow
+                            ? classNames.dragPreview({
+                                action: drag.action,
+                                row: previewRow,
+                                isDropValid: drag.isDropValid,
+                              })
+                            : undefined
+                          : classNames?.dragPreview
+                      }
                       isDropValid={drag.isDropValid}
                       onPointerMove={onClipPointerMove}
                       onPointerUp={onClipPointerUp}
