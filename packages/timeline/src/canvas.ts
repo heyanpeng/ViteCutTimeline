@@ -21,6 +21,18 @@ type CommonDraw = {
 };
 
 /**
+ * 从 canvas 继承的 CSS 变量读取颜色，允许业务侧直接通过样式覆盖背景色。
+ */
+const readCanvasColorVar = (
+  canvas: HTMLCanvasElement,
+  name: string,
+  fallback: string,
+) => {
+  const value = getComputedStyle(canvas).getPropertyValue(name).trim();
+  return value || fallback;
+};
+
+/**
  * 绘制时间线主画布，包括背景、轨道水平线(可选)、时间刻度线
  */
 export const drawTimelineCanvas = ({
@@ -54,18 +66,26 @@ export const drawTimelineCanvas = ({
   ctx.clearRect(0, 0, width, height);
 
   // 填充背景色
-  ctx.fillStyle = "#0f1115";
+  ctx.fillStyle = readCanvasColorVar(
+    canvas,
+    "--vitecut-timeline-bg-canvas-bg",
+    "#0f1115",
+  );
   ctx.fillRect(0, 0, width, height);
 
   // 可选：绘制轨道之间的水平线
   if (showHorizontalLines) {
-    ctx.strokeStyle = "#1c2028";
+    ctx.strokeStyle = readCanvasColorVar(
+      canvas,
+      "--vitecut-timeline-horizontal-line-color",
+      "#1c2028",
+    );
     ctx.lineWidth = 1;
     for (let i = 0; i < trackLayouts.length - 1; i += 1) {
       const current = trackLayouts[i];
       const next = trackLayouts[i + 1];
       // 轨道间隙垂直方向中心线位置
-      const gapCenterY = (current.bottom + next.top) / 2 - scrollTop + 0.5;
+      const gapCenterY = (current.bottom + next.top) / 2 - scrollTop;
       if (gapCenterY < -1 || gapCenterY > height + 1) continue;
       ctx.beginPath();
       ctx.moveTo(0, gapCenterY);
@@ -105,10 +125,20 @@ export const drawTimelineCanvas = ({
     // 次刻度依密度下采样（过密就只绘制部分）
     if (!isMajor && i % minorSampleEvery !== 0) continue;
     // 主次刻度线颜色区分
-    ctx.strokeStyle = isMajor ? "#36445e" : "#1b2230";
+    ctx.strokeStyle = isMajor
+      ? readCanvasColorVar(
+          canvas,
+          "--vitecut-timeline-grid-major-line-color",
+          "#36445e",
+        )
+      : readCanvasColorVar(
+          canvas,
+          "--vitecut-timeline-grid-minor-line-color",
+          "#1b2230",
+        );
     ctx.beginPath();
-    ctx.moveTo(x + 0.5, 0);
-    ctx.lineTo(x + 0.5, height);
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
     ctx.stroke();
   }
 };
@@ -141,14 +171,22 @@ export const drawRulerCanvas = ({
   ctx.clearRect(0, 0, width, height);
 
   // 填充标尺背景
-  ctx.fillStyle = "#121722";
+  ctx.fillStyle = readCanvasColorVar(
+    canvas,
+    "--vitecut-timeline-ruler-canvas-bg",
+    "#121722",
+  );
   ctx.fillRect(0, 0, width, height);
 
   // 绘制标尺底部边线
-  ctx.strokeStyle = "#2a3344";
+  ctx.strokeStyle = readCanvasColorVar(
+    canvas,
+    "--vitecut-timeline-ruler-border-color",
+    "#2a3344",
+  );
   ctx.beginPath();
-  ctx.moveTo(0, height - 0.5);
-  ctx.lineTo(width, height - 0.5);
+  ctx.moveTo(0, height - 1);
+  ctx.lineTo(width, height - 1);
   ctx.stroke();
 
   // 计算每秒对应的像素数、合适的刻度等级
@@ -181,18 +219,32 @@ export const drawRulerCanvas = ({
     if (!showMinorTicks && !isMajor) continue;
     if (!isMajor && i % minorSampleEvery !== 0) continue;
     // 主刻度、次刻度线分别样式
-    ctx.strokeStyle = isMajor ? "#7487aa" : "#3e506d";
+    ctx.strokeStyle = isMajor
+      ? readCanvasColorVar(
+          canvas,
+          "--vitecut-timeline-ruler-major-tick-color",
+          "#7487aa",
+        )
+      : readCanvasColorVar(
+          canvas,
+          "--vitecut-timeline-ruler-minor-tick-color",
+          "#3e506d",
+        );
     ctx.beginPath();
     // 主刻度从顶端画到最底，次刻度可以短一些
-    ctx.moveTo(x + 0.5, isMajor ? 0 : 14);
-    ctx.lineTo(x + 0.5, height);
+    ctx.moveTo(x, isMajor ? 0 : 14);
+    ctx.lineTo(x, height);
     ctx.stroke();
     // 记录主刻度点用于后续绘制文字
     if (isMajor) majorTimesMs.push(tMs);
   }
 
   // 设置时间文字样式
-  ctx.fillStyle = "#b4c0d4";
+  ctx.fillStyle = readCanvasColorVar(
+    canvas,
+    "--vitecut-timeline-ruler-text-color",
+    "#b4c0d4",
+  );
   ctx.font =
     "11px ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   ctx.textBaseline = "top";

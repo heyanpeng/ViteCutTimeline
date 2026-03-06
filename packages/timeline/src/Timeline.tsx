@@ -162,7 +162,11 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
 
     const totalContentWidth = timeToPixel(duration, zoom);
     const trackLayouts = useMemo<TrackLayout[]>(() => {
-      let y = RULER_HEIGHT;
+      /**
+       * 轨道区首行顶部留半个 gap，保证首行与行间距视觉一致。
+       * 这里用布局计算得到偏移，不依赖外部样式传值。
+       */
+      let y = RULER_HEIGHT + trackGap / 2;
       return editorData.map((row, index) => {
         const kind = row.actions[0]?.kind;
         const defaultHeight = getDefaultTrackHeight(row.role, kind);
@@ -1488,7 +1492,16 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
               const row = editorData[layout.index];
               if (!row) return null;
               const top = layout.top - RULER_HEIGHT - viewport.scrollTop;
-              if (top + layout.height < -8 || top > viewport.height + 8)
+              /**
+               * 轨道面板行在视觉上覆盖内容高度 + gap，
+               * 让行背景与分隔线不依赖 border-bottom 也能完整对齐。
+               */
+              const panelRowTop = top - trackGap / 2;
+              const panelRowHeight = layout.height + trackGap;
+              if (
+                panelRowTop + panelRowHeight < -8 ||
+                panelRowTop > viewport.height + 8
+              )
                 return null;
               const rowClassNames = Array.isArray(row.classNames)
                 ? row.classNames.filter(Boolean)
@@ -1505,7 +1518,7 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
                   ]
                     .filter(Boolean)
                     .join(" ")}
-                  style={{ top, height: layout.height }}
+                  style={{ top: panelRowTop, height: panelRowHeight }}
                 >
                   {renderTrackControlContent(row)}
                 </div>
