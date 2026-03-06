@@ -92,6 +92,23 @@ export const drawTimelineCanvas = ({
       ctx.lineTo(width, gapCenterY);
       ctx.stroke();
     }
+    /**
+     * 补最后一条轨道底部线：
+     * - 轨道间分隔线绘制在“gap 中心”；
+     * - 末尾同样补一条，保证最后一条轨道底边视觉与中间轨道一致。
+     */
+    const first = trackLayouts[0];
+    const last = trackLayouts[trackLayouts.length - 1];
+    if (first && last) {
+      const gapHalf = Math.max(0, first.top - RULER_HEIGHT);
+      const lastBottomLineY = last.bottom - scrollTop + gapHalf;
+      if (lastBottomLineY >= -1 && lastBottomLineY <= height + 1) {
+        ctx.beginPath();
+        ctx.moveTo(0, lastBottomLineY);
+        ctx.lineTo(width, lastBottomLineY);
+        ctx.stroke();
+      }
+    }
   }
 
   // 计算每秒对应的像素数（用于确定刻度密度和显示方式）
