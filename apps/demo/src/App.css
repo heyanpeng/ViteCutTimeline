@@ -46,13 +46,20 @@ body {
   text-align: center;
 }
 
-.github-link {
+.demo-header-links {
   position: absolute;
   right: 0;
   top: 0;
   display: inline-flex;
   align-items: center;
+  gap: 8px;
+}
+
+.header-link {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  gap: 6px;
   padding: 6px 10px;
   border-radius: 8px;
   border: 1px solid #2f4160;
@@ -63,7 +70,19 @@ body {
   text-decoration: none;
 }
 
-.github-link:hover {
+.header-link-icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.header-link-icon-npm {
+  width: 18px;
+  height: 12px;
+  object-fit: contain;
+}
+
+.header-link:hover {
   background: #1b2a43;
 }
 
@@ -401,7 +420,7 @@ body {
     width: 100%;
   }
 
-  .github-link {
+  .demo-header-links {
     position: static;
   }
 }

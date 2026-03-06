@@ -5,6 +5,8 @@ import "./App.css";
 
 // Github 项目地址
 const GITHUB_URL = "https://github.com/heyanpeng/ViteCutTimeline";
+const VITECUT_URL = "https://www.vitecut.com/";
+const NPM_URL = "https://www.npmjs.com/package/@vitecut/timeline";
 
 // 最小缩放比例
 const MIN_ZOOM = 0.1;
@@ -1078,14 +1080,64 @@ export default function App() {
               />
             </div>
           </div>
-          <a
-            className="github-link"
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noreferrer"
-          >
-            GitHub
-          </a>
+          <div className="demo-header-links">
+            <a
+              className="header-link"
+              href={VITECUT_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <img
+                className="header-link-icon"
+                src="https://www.vitecut.com/favicon.png"
+                alt=""
+                aria-hidden="true"
+              />
+              ViteCut
+            </a>
+            <a
+              className="header-link"
+              href={NPM_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <svg
+                className="header-link-icon header-link-icon-npm"
+                viewBox="0 0 27.23 27.23"
+                aria-hidden="true"
+              >
+                <rect
+                  fill="#CB3837"
+                  width="27.23"
+                  height="27.23"
+                  rx="2"
+                />
+                <polygon
+                  fill="#fff"
+                  points="5.8 21.75 13.66 21.75 13.67 9.98 17.59 9.98 17.58 21.76 21.51 21.76 21.52 6.06 5.82 6.04 5.8 21.75"
+                />
+              </svg>
+              NPM
+            </a>
+            <a
+              className="header-link"
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <svg
+                className="header-link-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  fill="currentColor"
+                  d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.71.5.1.68-.22.68-.49 0-.24-.01-1.04-.01-1.88-2.78.62-3.37-1.21-3.37-1.21-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .08 1.54 1.06 1.54 1.06.9 1.57 2.35 1.12 2.92.86.09-.67.35-1.12.64-1.38-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.74-.1-.26-.45-1.3.1-2.72 0 0 .84-.27 2.75 1.05A9.37 9.37 0 0 1 12 6.75c.85 0 1.71.12 2.51.35 1.9-1.32 2.74-1.05 2.74-1.05.55 1.42.2 2.46.1 2.72.64.71 1.03 1.62 1.03 2.74 0 3.94-2.34 4.81-4.57 5.06.36.31.68.92.68 1.86 0 1.34-.01 2.42-.01 2.75 0 .27.18.59.69.49A10.24 10.24 0 0 0 22 12.23C22 6.58 17.52 2 12 2Z"
+                />
+              </svg>
+              GitHub
+            </a>
+          </div>
         </div>
         <p className="demo-subtitle">
           Hybrid Canvas + DOM timeline with drag, trim, snapping and
