@@ -264,14 +264,24 @@ export const Timeline = forwardRef<TimelineState, TimelineProps>(
       zoom,
     ]);
 
+    /**
+     * 将位置对齐到设备像素栅格，降低子像素抖动导致的时间头视觉闪烁。
+     */
+    const alignToDevicePixel = useCallback((value: number) => {
+      if (typeof window === "undefined") return value;
+      const dpr = window.devicePixelRatio || 1;
+      return Math.round(value * dpr) / dpr;
+    }, []);
+
     const updatePlayheadPosition = useCallback(
       (time: number) => {
         if (!playheadRef.current) return;
-        const x =
-          timeToPixel(time, zoom) - (scrollRef.current?.scrollLeft ?? 0);
+        const x = alignToDevicePixel(
+          timeToPixel(time, zoom) - (scrollRef.current?.scrollLeft ?? 0),
+        );
         playheadRef.current.style.transform = `translateX(${x}px)`;
       },
-      [zoom],
+      [alignToDevicePixel, zoom],
     );
     const setCurrentTime = useCallback(
       (time: number, notify = true) => {
