@@ -300,7 +300,7 @@
   integrity sha512-OlKYX/JCGHSGD/APHmoISWn/YGx8Uf/vz6n6f2kA+lCd8scdywlINTpcMavAJsd33KgmMvS3eAhoBkxv1vcMBg==
 
 "@vitecut/timeline@file:/Users/heyanpeng/project/ViteCutTimeline/packages/timeline":
-  version "0.0.3"
+  version "0.0.4"
   resolved "file:packages/timeline"
 
 "@vitejs/plugin-react@^4.3.4":
