@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Timeline, formatTimeWithMs, pixelToTime } from "@vitecut/timeline";
-import type { Selection, TimelineAction, TimelineRow } from "@vitecut/timeline";
+import {
+  Timeline,
+  formatTimeWithMs,
+  pixelToTime,
+  timeToPixel,
+} from "@vitecut/timeline";
+import type {
+  Selection,
+  TimelineAction,
+  TimelineRow,
+  TimelineState,
+} from "@vitecut/timeline";
 import "./App.css";
 
 // Github 项目地址
@@ -32,6 +42,8 @@ const TRACK_HEIGHT_PRESETS = {
 
 // 最小可编辑片段时长（单位：秒）
 const MIN_EDIT_DURATION = 0.04;
+// 默认播放头时间（单位：秒）
+const DEFAULT_PLAYHEAD_TIME = 5;
 
 /**
  * 简单地返回action自身
@@ -63,6 +75,7 @@ const createDemoRows = (): TimelineRow[] => [
         outPoint: 6.5,
         kind: "video",
         title: "Office Wide Shot",
+        color: "#355f87",
       }),
       a({
         id: "broll-02",
@@ -73,6 +86,7 @@ const createDemoRows = (): TimelineRow[] => [
         outPoint: 6.2,
         kind: "video",
         title: "Device Close-up",
+        color: "#355f87",
       }),
       a({
         id: "broll-03",
@@ -83,6 +97,7 @@ const createDemoRows = (): TimelineRow[] => [
         outPoint: 8.2,
         kind: "video",
         title: "Packaging Detail",
+        color: "#355f87",
       }),
       a({
         id: "broll-04",
@@ -93,6 +108,7 @@ const createDemoRows = (): TimelineRow[] => [
         outPoint: 5.6,
         kind: "video",
         title: "Final Logo Reveal",
+        color: "#355f87",
       }),
     ],
   },
@@ -196,6 +212,7 @@ const createDemoRows = (): TimelineRow[] => [
         outPoint: 11.5,
         kind: "video",
         title: "Opening Interview",
+        color: "#2f4f78",
       }),
       a({
         id: "main-02",
@@ -206,6 +223,7 @@ const createDemoRows = (): TimelineRow[] => [
         outPoint: 18.2,
         kind: "video",
         title: "Product Story",
+        color: "#2f4f78",
       }),
       a({
         id: "main-03",
@@ -216,6 +234,7 @@ const createDemoRows = (): TimelineRow[] => [
         outPoint: 17.0,
         kind: "video",
         title: "Closing Scene",
+        color: "#2f4f78",
       }),
     ],
   },
@@ -237,6 +256,7 @@ const createDemoRows = (): TimelineRow[] => [
         outPoint: 22.6,
         kind: "audio",
         title: "Narration Part 1",
+        color: "#2f6d66",
       }),
       a({
         id: "vo-02",
@@ -247,6 +267,7 @@ const createDemoRows = (): TimelineRow[] => [
         outPoint: 23,
         kind: "audio",
         title: "Narration Part 2",
+        color: "#2f6d66",
       }),
     ],
   },
@@ -268,6 +289,7 @@ const createDemoRows = (): TimelineRow[] => [
         outPoint: 53.8,
         kind: "audio",
         title: "Background Music",
+        color: "#4f4f7e",
       }),
     ],
   },
@@ -285,7 +307,7 @@ export default function App() {
   // 播放状态
   const [playing, setPlaying] = useState(false);
   // 当前时间
-  const [time, setTime] = useState(0);
+  const [time, setTime] = useState(DEFAULT_PLAYHEAD_TIME);
   // 是否显示细刻度
   const [showMinorTicks, setShowMinorTicks] = useState(false);
   // 是否显示横线
@@ -309,6 +331,7 @@ export default function App() {
   const playRafRef = useRef<number | null>(null);
   const playLastTsRef = useRef<number | null>(null);
   const stageRef = useRef<HTMLElement | null>(null);
+  const timelineRef = useRef<TimelineState | null>(null);
   const [stageWidth, setStageWidth] = useState(0);
   const getRowControlState = useCallback(
     (rowId: string) => {
@@ -942,14 +965,52 @@ export default function App() {
    * 当前缩放的百分比
    */
   const zoomPercent = useMemo(() => `${Math.round(zoom * 100)}%`, [zoom]);
+  /**
+   * 一键适配缩放：让最后一个 clip 末尾（含留白）尽量完整落入主视口。
+   */
+  const handleFitZoom = useCallback(() => {
+    const mainViewportWidth = Math.max(0, stageWidth - TRACK_CONTROLS_WIDTH);
+    if (mainViewportWidth <= 1) {
+      setZoom(MIN_ZOOM);
+      requestAnimationFrame(() => timelineRef.current?.setScrollLeft(0));
+      return;
+    }
+    if (lastClipEnd <= 0) {
+      setZoom(1);
+      requestAnimationFrame(() => timelineRef.current?.setScrollLeft(0));
+      return;
+    }
+    const basePxPerSecond = timeToPixel(1, 1);
+    const targetZoom = mainViewportWidth / Math.max(1, lastClipEnd * basePxPerSecond);
+    setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, targetZoom)));
+    requestAnimationFrame(() => timelineRef.current?.setScrollLeft(0));
+  }, [lastClipEnd, stageWidth]);
   const getActionRender = useCallback((action: TimelineAction) => {
     const icon = String(action.icon ?? "▣");
     const title = String(action.title ?? action.effectId ?? action.id);
     const color = String(action.color ?? "#334155");
     return (
       <>
-        <div className="clip-item-icon">{icon}</div>
-        <div className="clip-item-content">
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: color,
+            opacity: 1,
+            pointerEvents: "none",
+            zIndex: 0,
+          }}
+        />
+        <div
+          className="clip-item-icon"
+          style={{ position: "relative", zIndex: 1 }}
+        >
+          {icon}
+        </div>
+        <div
+          className="clip-item-content"
+          style={{ position: "relative", zIndex: 1 }}
+        >
           <div className="clip-item-label" style={{ color: "#e2e8f0" }}>
             {title}
           </div>
@@ -964,15 +1025,6 @@ export default function App() {
             {action.effectId}
           </div>
         </div>
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: color,
-            opacity: 0.2,
-            pointerEvents: "none",
-          }}
-        />
       </>
     );
   }, []);
@@ -1106,12 +1158,7 @@ export default function App() {
                 viewBox="0 0 27.23 27.23"
                 aria-hidden="true"
               >
-                <rect
-                  fill="#CB3837"
-                  width="27.23"
-                  height="27.23"
-                  rx="2"
-                />
+                <rect fill="#CB3837" width="27.23" height="27.23" rx="2" />
                 <polygon
                   fill="#fff"
                   points="5.8 21.75 13.66 21.75 13.67 9.98 17.59 9.98 17.58 21.76 21.51 21.76 21.52 6.06 5.82 6.04 5.8 21.75"
@@ -1324,6 +1371,14 @@ export default function App() {
             >
               +
             </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={handleFitZoom}
+              title="Fit timeline to viewport"
+            >
+              Fit
+            </button>
             <span className="zoom-value">{zoomPercent}</span>
           </fieldset>
           <p className="hint">Tip: Hold Ctrl/Cmd + mouse wheel to zoom.</p>
@@ -1332,6 +1387,7 @@ export default function App() {
 
       <section ref={stageRef} className="stage">
         <Timeline
+          ref={timelineRef}
           // 时间轴编辑数据
           editorData={editorData}
           // 总时长

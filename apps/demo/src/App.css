@@ -375,6 +375,21 @@ body {
   margin-bottom: 12px;
 }
 
+.timeline-root {
+  border-radius: 12px;
+}
+
+.clip-item {
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+
+.clip-item-dragging,
+.drag-preview {
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+
 .snippet {
   background: rgba(15, 23, 42, 0.8);
   border: 1px solid #233147;
