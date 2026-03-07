@@ -17,16 +17,17 @@ A React timeline component for web-based video editors, powered by a Canvas + DO
 
 ## Features
 
-- Canvas + DOM hybrid rendering for both interaction precision and performance
-- Fully controlled data model: `editorData` / `currentTime` / `playing` managed externally
-- Rich event callbacks for move/resize/cursor/click/double-click interactions
-- Clip drag-and-drop with cross-track movement and optional auto track insertion
-- Left/right trimming with snapping to clip edges and timeline ticks
-- Dynamic timeline duration support (content end + configurable trailing space)
-- Custom action rendering (`getActionRender` and drag preview rendering)
-- Track-level state support (lock/hide/mute/delete handled by host app)
-- Virtualized rendering for large timeline data sets
-- Playhead-driven editing
+- Canvas + DOM hybrid rendering for high interaction precision and solid performance
+- Fully controlled editing model: external `editorData` / `currentTime` / `playing` / `zoom`
+- Imperative timeline API via ref (`setTime`, `setScrollLeft`, `setScrollTop`, `setPlayRate`, `reRender`)
+- Rich callbacks for move, resize, cursor drag, click, double-click, and selection workflows
+- Clip drag-and-drop with cross-track movement, snapping, and optional auto track insertion
+- Left/right trim support with snapping to clip edges and timeline ticks
+- Customizable track system: track panel header, track controls, track height presets, and class name injection
+- Custom clip rendering and drag preview rendering (`getActionRender`, `getActionDragRender`)
+- Dynamic timeline duration strategy (content end plus trailing padding)
+- Smooth zoom interaction (buttons, slider, Ctrl/Cmd + wheel) with fit-to-view integration
+- Virtualized rendering for large timelines and dense multi-track projects
 
 ## Installation
 
